@@ -1,0 +1,76 @@
+@import "tailwindcss";
+
+/* Tour It — logo tabanlı premium palette: mercan, krem, lacivert, yumuşak mavi vurgu */
+:root {
+  --background: #fbf6ee;
+  --foreground: #152238;
+  --surface: #fffbf7;
+  --brand-coral: #f2845c;
+  --brand-coral-dark: #e06a45;
+  --brand-navy: #152238;
+  --brand-cream: #fdf5e6;
+  --focus-ring: rgba(242, 132, 92, 0.35);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+
+  /* Mercan (CTA, vurgu) */
+  --color-coral-50: #fff8f5;
+  --color-coral-100: #ffede4;
+  --color-coral-200: #ffd8c7;
+  --color-coral-300: #ffb89a;
+  --color-coral-400: #f99b70;
+  --color-coral-500: #f2845c;
+  --color-coral-600: #e06a45;
+  --color-coral-700: #c55a3a;
+  --color-coral-800: #9d4a32;
+  --color-coral-900: #5c2d20;
+
+  /* Lacivert (metin, ikincil düğme) */
+  --color-navy-50: #f4f6f9;
+  --color-navy-100: #e8ecf2;
+  --color-navy-200: #d1d9e5;
+  --color-navy-300: #a8b5c8;
+  --color-navy-400: #7a8ba3;
+  --color-navy-500: #5a6d86;
+  --color-navy-600: #44566c;
+  --color-navy-700: #36445a;
+  --color-navy-800: #1e2d3d;
+  --color-navy-900: #152238;
+  --color-navy-950: #0c1520;
+
+  /* Krem / kağıt */
+  --color-cream-50: #fffdfb;
+  --color-cream-100: #fdf5e6;
+  --color-cream-200: #f5e9d6;
+
+  /* Küre mavisi — ikincil aksan (eski sky yerine) */
+  --color-accent-50: #f0f7fc;
+  --color-accent-100: #dceaf5;
+  --color-accent-200: #b8d4eb;
+  --color-accent-300: #8ab8dc;
+  --color-accent-400: #5c98c9;
+  --color-accent-500: #3d7dad;
+  --color-accent-600: #2f6490;
+  --color-accent-700: #2a5377;
+  --color-accent-800: #264562;
+  --color-accent-900: #233b52;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  background-image: radial-gradient(
+    ellipse 120% 80% at 100% -20%,
+    rgba(242, 132, 92, 0.12),
+    transparent 50%
+  ),
+    radial-gradient(
+      ellipse 80% 60% at 0% 100%,
+      rgba(21, 34, 56, 0.04),
+      transparent 45%
+    );
+}
