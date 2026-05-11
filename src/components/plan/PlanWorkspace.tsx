@@ -14,6 +14,7 @@ import {
 import type { ItineraryPlan } from "@/types/itinerary";
 import { CityImage } from "@/components/CityImage";
 import { popularCities, type PopularCity } from "@/data/popularCities";
+import { summarizePreferences } from "@/lib/itinerary/preferences";
 import { Loader2, Save, Sparkles } from "lucide-react";
 
 const MapboxMap = dynamic(
@@ -145,6 +146,11 @@ export function PlanWorkspace() {
     audience,
     environment,
   };
+
+  const preferenceTokens = useMemo(
+    () => summarizePreferences({ walking, nightlife, audience, environment }),
+    [walking, nightlife, audience, environment],
+  );
 
   async function handleSave() {
     if (!itinerary) {
@@ -396,6 +402,13 @@ export function PlanWorkspace() {
               )}
               {aiLoading ? "Generating itinerary…" : "Generate itinerary"}
             </button>
+
+            <p
+              className="text-center text-[11px] font-medium uppercase tracking-wide text-slate-500"
+              aria-live="polite"
+            >
+              {preferenceTokens.join("  ·  ")}
+            </p>
 
             <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700">
               <input

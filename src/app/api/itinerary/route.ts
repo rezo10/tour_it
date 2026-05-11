@@ -5,6 +5,7 @@ import {
   itineraryPlanSchema,
   type ParsedItineraryPlan,
 } from "@/lib/itinerary/schema";
+import { buildPreferencesDescription } from "@/lib/itinerary/preferences";
 
 export const maxDuration = 120;
 
@@ -29,37 +30,79 @@ type Body = {
 
 function buildPrompt(input: Body): string {
   const dayCount = Math.min(14, Math.max(1, Math.round(input.days)));
-  const walk = Math.min(100, Math.max(0, Math.round(input.walking)));
-  const night = Math.min(100, Math.max(0, Math.round(input.nightlife)));
+  const prefsDescription = buildPreferencesDescription({
+    walking: input.walking,
+    nightlife: input.nightlife,
+    audience: input.audience,
+    environment: input.environment,
+  });
 
   return `You are the "Tour It" travel companion AI. Reply with NOTHING but a single JSON object (no markdown fences, no commentary).
 
+═══════════════════════════════════════════════════════════
+CRITICAL MANDATORY RULES — APPLY EVERY ONE OF THESE
+═══════════════════════════════════════════════════════════
+The four numbered constraints below describe THIS specific traveller's
+preferences. They are NOT suggestions. Every single activity in the
+itinerary MUST be checked against ALL FOUR rules. If a stop would
+violate any rule, REPLACE IT with one that satisfies all four. Producing
+an itinerary that contradicts the slider values (e.g. a club for a
+low-nightlife traveller, or a hike for a low-walking traveller) is a
+FAILED response.
+
+${prefsDescription}
+
+═══════════════════════════════════════════════════════════
+SPECIFICITY RULES
+═══════════════════════════════════════════════════════════
+- Be SPECIFIC with venue types. BAD: "go out", "relax", "explore",
+  "enjoy local food". GOOD: "rooftop bar with DJ set", "beach club
+  opening at sunset", "covered market lunch with regional tapas",
+  "neighbourhood walking tour through the artisans' quarter".
+- Each "name" must be a recognisable, realistic venue, landmark, or
+  neighbourhood — real where possible, plausibly local-style otherwise.
+- Each "description" must reference WHY this stop fits the traveller's
+  preferences (e.g. "yüksek gece hayatı tercihinize uygun çatı bar",
+  "düşük yürüyüş tercihiniz için oturarak keyfini çıkarabileceğiniz
+  panoramik restoran"). Tie it back to the slider that justified it.
+
+═══════════════════════════════════════════════════════════
 PERSONA & LANGUAGE
-- All user-facing text INSIDE the JSON must be in **Turkish**: "title", each day's "title", every activity "name", "description", and "category".
-- Yazım üslubu: Dünyanın birçok yerini gezmiş, sıcakkanlı ve güvenilir bir gezi arkadaşı gibi konuş. Abartılı reklam dili kullanma; samimi "sana şunu öneririm" tonu kullan.
-- Her aktivitenin "description" alanında 2–4 cümle: neden bu durak, küçük pratik ipucu (kalabalık saat, tempo, ne giymek/ ne beklemek), yerel bir detay. Kur maceraları değil, gerçekçi gezgin tavsiyesi ver.
+═══════════════════════════════════════════════════════════
+- All user-facing strings INSIDE the JSON (title, day title, activity
+  name / description / category) MUST be written in **Turkish**.
+- Yazım üslubu: Dünyanın birçok yerini gezmiş, sıcakkanlı ve güvenilir
+  bir gezi arkadaşı gibi konuş. Abartılı reklam dili kullanma; samimi
+  "sana şunu öneririm" tonu kullan.
+- Her aktivitenin "description" alanı 2–4 Türkçe cümle olmalı: neden bu
+  durak (yukarıdaki tercih kuralına bağla), küçük pratik ipucu (en iyi
+  saat, ne giymek/beklemek, kalabalık seviyesi) ve yerel bir detay.
 
-REALISM & DURATIONS
-- "duration" alanlarını gerçekçi tut: örn. "45 dk", "1 saat", "1.5 saat", "2 saat". Transfer + güvenlik + tuvalet için gün içinde acele etme.
-- Yürüyüş eğilimi ${walk}/100: düşükse daha az durak veya daha kısa bacaklar; yüksekse yaya güzergâhları ve mahalle keşifleri artır.
-- Gece hayatı ilgisi ${night}/100: düşükse akşamı sakin kültür/yemek; yüksekse bir iki akşam canlı mahalle veya gece kaşifi uyarısı (abartma).
-- Kitle: ${input.audience}. Mekân / iç-dış tercih: ${input.environment}.
+═══════════════════════════════════════════════════════════
+REALISM
+═══════════════════════════════════════════════════════════
+- "duration" değerleri gerçekçi: "45 dk", "1 saat", "1.5 saat",
+  "2 saat", "3 saat". Transfer, mola ve yemek için pay bırak.
+- Koordinatlar (lat/lng) gerçek WGS84 olmalı ve ${input.city},
+  ${input.country} çevresinde anlamlı bir yerde durmalı.
+- NO REPETITION across the whole trip — never reuse the same venue,
+  museum, or restaurant name twice (case-insensitive). Pick distinct
+  realistic or plausibly local stops.
+- Within a day, adjacent stops should make geographical sense.
 
-NO REPETITION
-- Tüm seyahat boyunca (tüm günler) **aynı mekân / işletme / müze adını iki kez kullanma** (büyük/küçük harf fark etmez). Farklı isimlerle gerçek veya çok tipik duraklar seç.
-- Aynı gün içinde komşu iki durak mantıklı sırada olsun; koordinatlar (${input.city}, ${input.country}) çevresinde gerçekçi WGS84 lat/lng kullan.
-
-JSON ŞEKLİ (tam olarak bu yapı, sayılar ve metin türleri):
+═══════════════════════════════════════════════════════════
+JSON SHAPE — EXACT
+═══════════════════════════════════════════════════════════
 {
   "title": string,
   "country": "${input.country}",
   "city": "${input.city}",
   "tripType": "${input.tripType}",
-  "days": /* exactly ${dayCount} items */, each:
+  "days": [
     {
       "day": number (1…${dayCount}),
       "title": string,
-      "activities": /* at least 2 per day */ [
+      "activities": [
         {
           "order": number,
           "name": string,
@@ -71,9 +114,16 @@ JSON ŞEKLİ (tam olarak bu yapı, sayılar ve metin türleri):
         }
       ]
     }
+  ]
 }
 
-Koşullar: "days" dizisinin uzunluğu tam ${dayCount} olsun; her günün "day" numarası sırayla artsın; her aktivitenin "order" o gün içinde 1'den başlasın.`;
+CONSTRAINTS:
+- "days" array length is EXACTLY ${dayCount}.
+- Each day's "day" number is sequential 1…${dayCount}.
+- Each day has AT LEAST 2 activities. If the nightlife or walking rules
+  above demand a heavier programme (e.g. very high nightlife = chain
+  2–3 evening venues), include MORE activities for that day.
+- Each activity's "order" starts at 1 and is sequential within the day.`;
 }
 
 const DEFAULT_MODEL_CHAIN = [
@@ -176,13 +226,21 @@ export async function POST(request: Request) {
     );
   }
 
+  const safeNum = (v: unknown, fallback: number) => {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : fallback;
+  };
+
   const input: Body = {
     country: String(body.country ?? "").trim(),
     city: String(body.city ?? "").trim(),
     tripType: String(body.tripType ?? "").trim(),
-    days: Number(body.days) || 3,
-    walking: Number(body.walking) ?? 50,
-    nightlife: Number(body.nightlife) ?? 30,
+    days: Math.min(14, Math.max(1, Math.round(safeNum(body.days, 3)))),
+    walking: Math.min(100, Math.max(0, Math.round(safeNum(body.walking, 50)))),
+    nightlife: Math.min(
+      100,
+      Math.max(0, Math.round(safeNum(body.nightlife, 30))),
+    ),
     audience: String(body.audience ?? "any"),
     environment: String(body.environment ?? "mixed"),
   };
