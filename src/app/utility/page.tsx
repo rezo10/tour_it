@@ -1,5 +1,5 @@
-import { UtilityPrototype } from "@/components/utility/UtilityPrototype";
+import { UtilityWorkspace } from "@/components/utility/UtilityWorkspace";
 
 export default function UtilityPage() {
-  return <UtilityPrototype />;
+  return <UtilityWorkspace />;
 }

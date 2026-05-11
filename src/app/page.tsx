@@ -2,8 +2,10 @@
 import { HeroDiscoveryRail } from "@/components/home/HeroDiscoveryRail";
 import { PlaceCoverImage } from "@/components/places/PlaceCoverImage";
 import { getSeasonalRails } from "@/lib/places/seasonalPicks";
-import { mockExplorePlans } from "@/lib/mock-data";
 import { PlanCard } from "@/components/explore/PlanCard";
+import type { ExplorePlanCard } from "@/lib/mock-data";
+import { createClient } from "@/lib/supabase/server";
+import { isSupabaseConfigured } from "@/lib/supabase/env";
 import {
   ArrowRight,
   Globe2,
@@ -31,21 +33,78 @@ const featured = [
 
 const news = [
   {
-    title: "New: structured JSON itineraries",
+    title: "Structured AI itineraries",
     blurb:
-      "The Plan module is designed for Gemini output you can trust — day order, duration, and map pins in one schema.",
+      "The Plan module turns your country, city and preferences into a validated JSON itinerary — day order, durations and map coordinates in one schema.",
   },
   {
-    title: "Community stays lightweight",
+    title: "Lightweight community",
     blurb:
-      "Posts, likes, and follows without a full messaging stack — aligned with project scope.",
+      "Posts, likes, comments and follows powered by Supabase row-level security — built for the project scope, not bloated with messaging.",
   },
+];
+
+const coverGradients = [
+  "from-accent-200 via-coral-100 to-cream-50",
+  "from-amber-100 via-orange-50 to-coral-100",
+  "from-coral-100 via-cream-100 to-navy-50",
 ];
 
 export const dynamic = "force-dynamic";
 
-export default function HomePage() {
+async function loadRecentPublicPlans(): Promise<ExplorePlanCard[]> {
+  if (!isSupabaseConfigured()) return [];
+  try {
+    const supabase = await createClient();
+    const { data: rows, error } = await supabase
+      .from("plans")
+      .select(
+        `
+        id,
+        title,
+        country,
+        city,
+        trip_type,
+        preferences,
+        updated_at,
+        profiles ( display_name )
+      `,
+      )
+      .eq("is_public", true)
+      .order("updated_at", { ascending: false })
+      .limit(3);
+
+    if (error || !rows) return [];
+
+    return rows.map((p, i) => {
+      const prefs = (p.preferences ?? {}) as { note?: string; day_count?: number };
+      const profile = Array.isArray(p.profiles) ? p.profiles[0] : p.profiles;
+      const creator =
+        (profile as { display_name?: string | null } | null)?.display_name ??
+        "Traveller";
+      return {
+        id: String(p.id),
+        title: p.title,
+        country: p.country,
+        city: p.city,
+        tripType: p.trip_type,
+        days: typeof prefs.day_count === "number" ? prefs.day_count : 3,
+        description:
+          typeof prefs.note === "string" && prefs.note
+            ? prefs.note
+            : `${p.trip_type} · ${p.city}, ${p.country}`,
+        creator: creator || "Traveller",
+        coverGradient: coverGradients[i % coverGradients.length],
+      };
+    });
+  } catch {
+    return [];
+  }
+}
+
+export default async function HomePage() {
   const seasonal = getSeasonalRails(new Date());
+  const recentPlans = await loadRecentPublicPlans();
 
   return (
     <div className="bg-gradient-to-b from-cream-50 via-cream-100/90 to-coral-50/30">
@@ -75,9 +134,9 @@ export default function HomePage() {
                 </span>
               </h1>
               <p className="mt-6 text-lg leading-relaxed text-navy-600">
-                Tour It brings discovery, itinerary building, maps, utilities, and
-                shared experiences into one calm, modern workspace — built for your
-                graduation project scope.
+                Tour It brings discovery, AI itinerary building, maps, weather
+                utilities and shared experiences into one calm, modern
+                workspace.
               </p>
               <div className="mt-10 flex flex-wrap gap-4">
                 <Link
@@ -95,7 +154,7 @@ export default function HomePage() {
                 </Link>
               </div>
               <p className="mt-8 text-xs text-slate-400">
-                Mevsim önerileri:{" "}
+                Season picks for{" "}
                 <span className="font-medium text-slate-500">
                   {seasonal.periodLabel}
                 </span>
@@ -120,8 +179,8 @@ export default function HomePage() {
               Featured destinations
             </h2>
             <p className="mt-1 text-slate-600">
-              Curated entry points — your planner will adapt to country, city,
-              and trip type.
+              Curated entry points — your planner adapts to country, city and
+              trip type.
             </p>
           </div>
           <Link
@@ -194,7 +253,7 @@ export default function HomePage() {
               Recent public plans
             </h2>
             <p className="mt-1 text-slate-600">
-              Mock data — Explore will list user-published trips from Supabase.
+              Itineraries the community has just shared.
             </p>
           </div>
           <Link
@@ -204,11 +263,24 @@ export default function HomePage() {
             View all →
           </Link>
         </div>
-        <div className="mt-8 grid gap-6 md:grid-cols-3">
-          {mockExplorePlans.map((p) => (
-            <PlanCard key={p.id} plan={p} />
-          ))}
-        </div>
+        {recentPlans.length > 0 ? (
+          <div className="mt-8 grid gap-6 md:grid-cols-3">
+            {recentPlans.map((p) => (
+              <PlanCard key={p.id} plan={p} />
+            ))}
+          </div>
+        ) : (
+          <div className="mt-8 rounded-2xl border border-dashed border-slate-200 bg-white/70 p-8 text-center text-sm text-slate-600">
+            No public itineraries have been shared yet. Be the first — open the
+            <Link
+              href="/plan"
+              className="ml-1 font-semibold text-coral-700 hover:text-coral-900"
+            >
+              planner
+            </Link>{" "}
+            and toggle “Share publicly” when you save.
+          </div>
+        )}
       </section>
     </div>
   );

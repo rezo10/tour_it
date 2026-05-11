@@ -1,4 +1,4 @@
-/** Şehir + ülke için tekrarlanabilir kapak görseli (LoremFlickr etiketleri; API anahtarı gerekmez). */
+/** Deterministic cover image URL for a (city, country) pair (LoremFlickr — no API key required). */
 
 function lockKey(city: string, country: string): number {
   const s = `${city.trim()}|${country.trim()}`.toLowerCase();
@@ -25,7 +25,8 @@ function tagsForPlace(city: string, country: string): string {
 }
 
 /**
- * Kapak fotoğrafı URL’si. Aynı şehir/ülke için lock ile görsel sabit kalır.
+ * Build the cover photo URL for a city/country. The lock keeps the picture
+ * stable across renders for the same place.
  */
 export function placeCoverImageUrl(
   city: string,

@@ -144,7 +144,10 @@ export async function POST(request: Request) {
   } = await supabase.auth.getUser();
   if (!user) {
     return NextResponse.json(
-      { error: "Plan üretmek için önce giriş yapmalısın.", code: "AUTH" },
+      {
+        error: "You need to sign in before generating an itinerary.",
+        code: "AUTH",
+      },
       { status: 401 },
     );
   }
@@ -154,7 +157,7 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         error:
-          "Yapay zeka anahtarı ayarlı değil. Geliştirici: .env.local içine GEMINI_API_KEY eklesin.",
+          "The AI service is not configured on the server. Please contact the maintainer.",
         code: "NO_KEY",
       },
       { status: 500 },
@@ -166,7 +169,9 @@ export async function POST(request: Request) {
     body = (await request.json()) as Body;
   } catch {
     return NextResponse.json(
-      { error: "İstek okunamadı. Sayfayı yenileyip tekrar dene." },
+      {
+        error: "We couldn't read your request. Please refresh and try again.",
+      },
       { status: 400 },
     );
   }
@@ -185,7 +190,7 @@ export async function POST(request: Request) {
   if (!input.country || !input.city || !input.tripType) {
     return NextResponse.json(
       {
-        error: "Ülke, şehir ve gezi türünü seçmelisin.",
+        error: "Please pick a country, city and trip type before generating.",
         code: "VALIDATION",
       },
       { status: 400 },
@@ -215,7 +220,7 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           error:
-            "Çok istek gönderildi veya günlük ücretsiz kota doldu. Bir süre bekleyip tekrar dene.",
+            "We're getting a lot of requests right now or the daily quota is full. Please try again in a few minutes.",
           code: "GEMINI_QUOTA",
           modelsTried: modelChain,
         },
@@ -225,7 +230,7 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         error:
-          "Plan oluşturulamadı. İnternetini kontrol edip biraz sonra tekrar dene.",
+          "We couldn't generate your itinerary. Check your connection and try again.",
         code: "GEMINI_FAIL",
         modelsTried: modelChain,
       },
@@ -247,7 +252,7 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         error:
-          "Yanıt bozuk geldi. Tekrar üretmeyi dene; olmazsa biraz sonra tekrar dene.",
+          "The AI returned a malformed response. Please try generating again.",
         code: "BAD_JSON",
       },
       { status: 502 },
@@ -259,7 +264,7 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         error:
-          "Plan şekli uyuşmadı. Tekrar üretmeyi dene veya gün sayısını değiştir.",
+          "The itinerary didn't match the expected shape. Try regenerating or change the number of days.",
         code: "SCHEMA",
       },
       { status: 422 },

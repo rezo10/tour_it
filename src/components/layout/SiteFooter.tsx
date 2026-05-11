@@ -28,6 +28,9 @@ export function SiteFooter() {
           <Link href="/explore" className="hover:text-coral-700">
             Explore
           </Link>
+          <Link href="/community" className="hover:text-coral-700">
+            Community
+          </Link>
           <Link href="/utility" className="hover:text-coral-700">
             Utilities
           </Link>

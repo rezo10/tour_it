@@ -1,7 +1,7 @@
-﻿"use client";
+"use client";
 
 import dynamic from "next/dynamic";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { ItineraryPanel } from "@/components/plan/ItineraryPanel";
 import {
   savePlanToDatabase,
@@ -13,6 +13,7 @@ import {
 } from "@/lib/itinerary/apiErrors";
 import type { ItineraryPlan } from "@/types/itinerary";
 import { PlaceCoverImage } from "@/components/places/PlaceCoverImage";
+import { popularCities, type PopularCity } from "@/data/popularCities";
 import { Loader2, Save, Sparkles } from "lucide-react";
 
 const MapboxMap = dynamic(
@@ -31,27 +32,42 @@ function MapLoading() {
   );
 }
 
-const countries = ["Portugal", "Japan", "Italy", "Peru", "Denmark"];
-const cities: Record<string, string[]> = {
-  Portugal: ["Lisbon", "Porto"],
-  Japan: ["Kyoto", "Tokyo"],
-  Italy: ["Florence", "Rome"],
-  Peru: ["Cusco", "Lima"],
-  Denmark: ["Copenhagen", "Aarhus"],
-};
-const tripTypes = ["Cultural", "Relaxing", "Adventure", "Nature", "Urban"];
+const tripTypes = [
+  "Cultural",
+  "Relaxing",
+  "Adventure",
+  "Nature",
+  "Urban",
+] as const;
 
-export function PlanPrototypeClient() {
-  const [country, setCountry] = useState(countries[0]);
-  const [city, setCity] = useState(cities[countries[0]][0]);
-  const [tripType, setTripType] = useState(tripTypes[0]);
-  const [days, setDays] = useState(3);
-  const [walking, setWalking] = useState(50);
-  const [nightlife, setNightlife] = useState(30);
-  const [audience, setAudience] = useState<"any" | "family" | "solo">("any");
-  const [environment, setEnvironment] = useState<"mixed" | "indoor" | "outdoor">(
-    "mixed",
+const DEFAULT_CITY: PopularCity =
+  popularCities.find((p) => p.city === "Lisbon") ?? popularCities[0]!;
+
+export function PlanWorkspace() {
+  const countries = useMemo(
+    () =>
+      [...new Set(popularCities.map((p) => p.country))].sort((a, b) =>
+        a.localeCompare(b, "en"),
+      ),
+    [],
   );
+
+  const [country, setCountry] = useState<string>(DEFAULT_CITY.country);
+  const citiesHere = useMemo(
+    () => popularCities.filter((p) => p.country === country),
+    [country],
+  );
+  const [city, setCity] = useState<string>(DEFAULT_CITY.city);
+
+  const [tripType, setTripType] = useState<string>(tripTypes[0]);
+  const [days, setDays] = useState<number>(3);
+  const [walking, setWalking] = useState<number>(50);
+  const [nightlife, setNightlife] = useState<number>(30);
+  const [audience, setAudience] = useState<"any" | "family" | "solo">("any");
+  const [environment, setEnvironment] = useState<
+    "mixed" | "indoor" | "outdoor"
+  >("mixed");
+
   const [showResult, setShowResult] = useState(false);
   const [itinerary, setItinerary] = useState<ItineraryPlan | null>(null);
 
@@ -59,16 +75,19 @@ export function PlanPrototypeClient() {
   const [aiError, setAiError] = useState<string | null>(null);
   const [savePublic, setSavePublic] = useState(false);
   const [saveMsg, setSaveMsg] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
-  const handleCountry = (c: string) => {
+  function handleCountry(c: string) {
     setCountry(c);
-    setCity(cities[c][0]);
-  };
+    const first = popularCities.find((p) => p.country === c);
+    if (first) setCity(first.city);
+  }
 
   async function handleGenerate() {
     setAiError(null);
     setSaveMsg(null);
+    setSaveError(null);
     setAiLoading(true);
     try {
       const res = await fetch("/api/itinerary", {
@@ -105,7 +124,7 @@ export function PlanPrototypeClient() {
       }
 
       if (!data.plan) {
-        setAiError("Plan gelmedi. Tekrar üretmeyi dene.");
+        setAiError("The planner couldn't return an itinerary. Please try again.");
         return;
       }
 
@@ -129,24 +148,25 @@ export function PlanPrototypeClient() {
 
   async function handleSave() {
     if (!itinerary) {
-      setSaveMsg("Önce Tour It ile plan üret.");
+      setSaveError("Generate an itinerary first, then you can save it.");
       return;
     }
     setSaveMsg(null);
+    setSaveError(null);
     setSaving(true);
     try {
       const r = await savePlanToDatabase(itinerary, prefs, savePublic);
       if ("error" in r && r.error) {
-        setSaveMsg(r.error);
+        setSaveError(r.error);
         return;
       }
       if ("success" in r && r.success) {
-        setSavePublic(false);
         setSaveMsg(
           savePublic
-            ? "Plan kaydedildi ve Explore’da herkese açık."
-            : "Plan hesabına kaydedildi (yalnızca sen).",
+            ? "Plan saved — it is now visible in Explore."
+            : "Plan saved to your profile (private).",
         );
+        setSavePublic(false);
       }
     } finally {
       setSaving(false);
@@ -160,8 +180,9 @@ export function PlanPrototypeClient() {
           Plan your trip
         </h1>
         <p className="mt-2 text-slate-600">
-          Tour It ile günlük plan üret, Mapbox&apos;ta durakları gör; kaydı
-          Supabase&apos;e yaz.
+          Pick a destination and your preferences. Tour It will draft a
+          day-by-day itinerary you can preview on the map and save to your
+          profile.
         </p>
         {aiError && (
           <p
@@ -192,7 +213,7 @@ export function PlanPrototypeClient() {
               {city}
             </p>
             <p className="mt-1 text-sm text-white/90">
-              {tripType} · {days} gün
+              {tripType} · {days} {days === 1 ? "day" : "days"}
             </p>
           </div>
         </div>
@@ -230,9 +251,9 @@ export function PlanPrototypeClient() {
                   onChange={(e) => setCity(e.target.value)}
                   disabled={aiLoading}
                 >
-                  {cities[country].map((c) => (
-                    <option key={c} value={c}>
-                      {c}
+                  {citiesHere.map((c) => (
+                    <option key={`${c.city}-${c.cc}`} value={c.city}>
+                      {c.city}
                     </option>
                   ))}
                 </select>
@@ -264,7 +285,9 @@ export function PlanPrototypeClient() {
                   max={14}
                   className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 outline-none ring-coral-500/30 focus:border-coral-400 focus:ring-2"
                   value={days}
-                  onChange={(e) => setDays(Number(e.target.value))}
+                  onChange={(e) =>
+                    setDays(Math.max(1, Math.min(14, Number(e.target.value))))
+                  }
                   disabled={aiLoading}
                 />
               </label>
@@ -373,7 +396,7 @@ export function PlanPrototypeClient() {
               ) : (
                 <Sparkles className="h-4 w-4" aria-hidden />
               )}
-              {aiLoading ? "Tour It oluşturuyor…" : "Tour It ile üret"}
+              {aiLoading ? "Generating itinerary…" : "Generate itinerary"}
             </button>
 
             <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700">
@@ -383,7 +406,7 @@ export function PlanPrototypeClient() {
                 onChange={(e) => setSavePublic(e.target.checked)}
                 className="rounded border-slate-300 accent-coral-600"
               />
-              Kaydederken Explore&apos;da herkese aç
+              Share publicly in Explore
             </label>
 
             <button
@@ -397,11 +420,22 @@ export function PlanPrototypeClient() {
               ) : (
                 <Save className="h-4 w-4" aria-hidden />
               )}
-              {saving ? "Kaydediliyor…" : "Planı veritabanına kaydet"}
+              {saving ? "Saving…" : "Save plan"}
             </button>
             {saveMsg && (
-              <p className="text-center text-xs text-slate-600" role="status">
+              <p
+                className="text-center text-xs font-medium text-emerald-700"
+                role="status"
+              >
                 {saveMsg}
+              </p>
+            )}
+            {saveError && (
+              <p
+                className="text-center text-xs font-medium text-rose-700"
+                role="alert"
+              >
+                {saveError}
               </p>
             )}
           </div>
@@ -410,12 +444,16 @@ export function PlanPrototypeClient() {
         <section className="min-h-[560px]">
           {!showResult || !itinerary ? (
             <div className="flex h-full min-h-[480px] flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-slate-50/80 p-8 text-center">
-              <p className="max-w-sm text-sm text-slate-600">
-                Formu doldurup{" "}
+              <Sparkles
+                className="h-10 w-10 text-coral-400"
+                aria-hidden
+              />
+              <p className="mt-4 max-w-sm text-sm text-slate-600">
+                Fill in the form on the left and press{" "}
                 <span className="font-semibold text-slate-800">
-                  Tour It ile üret
+                  Generate itinerary
                 </span>{" "}
-                de — günlük program ve harita burada açılır.
+                — your day-by-day plan and the map view will open here.
               </p>
             </div>
           ) : (

@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { Menu } from "lucide-react";
+import { Avatar } from "@/components/profile/Avatar";
 import { SignOutButton } from "@/components/layout/SignOutButton";
 
 const nav = [
@@ -12,11 +13,14 @@ const nav = [
   { href: "/profile", label: "Profile" },
 ] as const;
 
-export function SiteHeader({
-  user,
-}: {
-  user: { email: string; nick: string | null } | null;
-}) {
+type HeaderUser = {
+  id: string;
+  email: string;
+  nick: string | null;
+  avatarUrl: string | null;
+} | null;
+
+export function SiteHeader({ user }: { user: HeaderUser }) {
   const shownName = user?.nick ?? (user?.email ? user.email.split("@")[0] : "");
   return (
     <header className="sticky top-0 z-50 border-b border-navy-900/10 bg-cream-50/90 shadow-sm shadow-navy-900/5 backdrop-blur-md">
@@ -51,12 +55,16 @@ export function SiteHeader({
         <div className="flex items-center gap-2">
           {user ? (
             <>
-              <span
-                className="hidden max-w-[160px] truncate text-sm font-medium text-navy-800 sm:inline"
-                title={user.nick ? user.email : undefined}
+              <Link
+                href="/profile"
+                className="hidden items-center gap-2 rounded-full border border-transparent px-2 py-1 text-sm font-medium text-navy-800 transition hover:border-coral-200 hover:bg-coral-50 sm:inline-flex"
+                title={user.nick ? user.email : "Profile"}
               >
-                @{shownName}
-              </span>
+                <Avatar url={user.avatarUrl} size="sm" alt={shownName} />
+                <span className="hidden max-w-[140px] truncate sm:inline">
+                  @{shownName}
+                </span>
+              </Link>
               <SignOutButton />
             </>
           ) : (

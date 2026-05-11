@@ -1,4 +1,4 @@
-/** ISO 3166-1 alpha-2 → bölge adı (ör. EN "Turkey", TR yerelinde "Türkiye"). */
+/** ISO 3166-1 alpha-2 → display name (e.g. EN "Turkey", TR locale "Türkiye"). */
 export function countryNameFromCc(cc: string, locale = "en"): string {
   try {
     return (

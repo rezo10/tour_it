@@ -47,7 +47,7 @@ export function PlaceCoverImage({
     >
       <Image
         src={src}
-        alt={`${city}, ${country} — seyahat görseli`}
+        alt={`${city}, ${country} — travel cover photo`}
         fill
         className="object-cover"
         sizes="(max-width: 768px) 100vw, 960px"

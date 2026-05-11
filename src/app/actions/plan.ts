@@ -20,7 +20,9 @@ export async function savePlanToDatabase(
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    return { error: "Oturum gerekli" as const };
+    return {
+      error: "You need to sign in to save a plan." as const,
+    };
   }
 
   const { data: planRow, error: pe } = await supabase
@@ -44,7 +46,8 @@ export async function savePlanToDatabase(
 
   if (pe || !planRow) {
     return {
-      error: pe?.message ?? "Plan kaydedilemedi — supabase/migrations/002 çalıştırıldı mı?",
+      error:
+        "We couldn't save your plan. Please try again — if the problem persists, refresh the page and re-generate.",
     };
   }
 
@@ -62,7 +65,9 @@ export async function savePlanToDatabase(
       .single();
 
     if (de || !dayRow) {
-      return { error: de?.message ?? "Gün kaydı başarısız" };
+      return {
+        error: "We couldn't save one of the days. Please try again.",
+      };
     }
 
     const dayId = dayRow.id as string;
@@ -80,7 +85,10 @@ export async function savePlanToDatabase(
 
     const { error: ie } = await supabase.from("plan_items").insert(items);
     if (ie) {
-      return { error: ie.message };
+      return {
+        error:
+          "We couldn't save one of the activities. Please try saving again.",
+      };
     }
   }
 
@@ -92,7 +100,9 @@ export async function togglePlanVisibility(planId: string, isPublic: boolean) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return { error: "Oturum gerekli" as const };
+  if (!user) {
+    return { error: "You need to sign in to change visibility." as const };
+  }
 
   const { error } = await supabase
     .from("plans")
@@ -100,6 +110,11 @@ export async function togglePlanVisibility(planId: string, isPublic: boolean) {
     .eq("id", planId)
     .eq("user_id", user.id);
 
-  if (error) return { error: error.message };
+  if (error) {
+    return {
+      error:
+        "We couldn't update the visibility right now. Please try again." as const,
+    };
+  }
   return { success: true as const };
 }

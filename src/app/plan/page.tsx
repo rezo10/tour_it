@@ -1,5 +1,5 @@
-import { PlanPrototypeClient } from "@/components/plan/PlanPrototypeClient";
+import { PlanWorkspace } from "@/components/plan/PlanWorkspace";
 
 export default function PlanPage() {
-  return <PlanPrototypeClient />;
+  return <PlanWorkspace />;
 }

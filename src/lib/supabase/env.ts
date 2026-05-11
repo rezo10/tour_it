@@ -1,6 +1,7 @@
 /**
- * NEXT_PUBLIC_* is inlined by Next on both server and client builds.
- * Placeholders from .env.example count as "not configured".
+ * Read NEXT_PUBLIC_* environment values exposed by Next to both server and
+ * client builds. Placeholders from .env.example are treated as "not
+ * configured" so the app can render a friendly notice instead of crashing.
  */
 export function getSupabasePublicEnv(): { url: string; anonKey: string } {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() ?? "";

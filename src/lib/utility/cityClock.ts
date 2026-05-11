@@ -1,4 +1,4 @@
-/** OpenWeather `timezone` (UTC’den saniye sapma) ile yerel duvar saati. */
+/** Compute a wall-clock time from OpenWeather's `timezone` field (offset from UTC, in seconds). */
 
 export function formatOffsetWallClock(
   nowMs: number,
@@ -15,7 +15,7 @@ export function formatOffsetWallClock(
   return `${p(hh)}:${p(mm)}:${p(ss)}`;
 }
 
-/** Örn. UTC+3 veya UTC+5.75 */
+/** Short timezone label, e.g. UTC+3 or UTC+5.75 */
 export function offsetShortLabel(offsetSec: number): string {
   const h = offsetSec / 3600;
   const rounded = Math.round(h * 4) / 4;

@@ -20,14 +20,16 @@ export function LoginForm() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(
-    authError === "auth" ? "Session could not be established. Try signing in again." : null,
+    authError === "auth"
+      ? "Your session couldn't be established. Please sign in again."
+      : null,
   );
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!isSupabaseConfigured()) {
       setMessage(
-        "Supabase anahtarları yok. tour_it-main klasöründe .env.local oluşturup NEXT_PUBLIC_SUPABASE_URL ve NEXT_PUBLIC_SUPABASE_ANON_KEY değerlerini yapıştır; ardından npm run dev ile yeniden başlat.",
+        "Authentication is temporarily unavailable. Please try again later.",
       );
       return;
     }
@@ -41,12 +43,12 @@ export function LoginForm() {
       if (mode === "signup") {
         const nick = nickname.trim();
         if (nick.length < 2 || nick.length > 32) {
-          setMessage("Nick 2–32 karakter olmalı.");
+          setMessage("Username must be between 2 and 32 characters.");
           return;
         }
         if (!/^[\p{L}\p{N}._-]+$/u.test(nick)) {
           setMessage(
-            "Nick yalnızca harf (Türkçe dahil), rakam, nokta, alt çizgi ve tire içerebilir; boşluk olmaz.",
+            "Username can only contain letters, numbers, dot, underscore and hyphen (no spaces).",
           );
           return;
         }
@@ -70,7 +72,7 @@ export function LoginForm() {
           return;
         }
         setMessage(
-          "Hesabını onaylamak için e-postanı kontrol et; ardından giriş yapabilirsin.",
+          "Check your inbox to confirm your account, then sign in here.",
         );
         return;
       }
@@ -97,11 +99,9 @@ export function LoginForm() {
           {mode === "signin" ? "Welcome back" : "Create an account"}
         </h1>
         <p className="mt-2 text-sm text-slate-600">
-          Use your Supabase project credentials and run{" "}
-          <code className="rounded bg-slate-100 px-1 py-0.5 text-xs">
-            supabase/schema.sql
-          </code>{" "}
-          for planner sync.
+          {mode === "signin"
+            ? "Sign in to plan trips, save itineraries and join the community."
+            : "Create a free account to save plans and share them with other travellers."}
         </p>
 
         <div className="mt-6 flex rounded-xl bg-slate-100 p-1">
@@ -147,7 +147,7 @@ export function LoginForm() {
           {mode === "signup" && (
             <label className="block">
               <span className="text-sm font-medium text-slate-700">
-                Nick (sitede görünecek)
+                Username (shown publicly)
               </span>
               <input
                 type="text"
@@ -156,25 +156,26 @@ export function LoginForm() {
                 onChange={(e) =>
                   setNickname(e.target.value.replace(/\s/g, ""))
                 }
-                placeholder="ör. gezgin_ayse"
+                placeholder="e.g. trail_traveller"
                 minLength={2}
                 maxLength={32}
                 className="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none ring-coral-500/30 focus:border-coral-400 focus:ring-2"
                 autoComplete="username"
               />
               <p className="mt-1 text-xs text-slate-500">
-                2–32 karakter; Türkçe harf, rakam, . _ - (boşluksuz)
+                2–32 characters; letters, numbers, dot (.), underscore (_) or
+                hyphen (-).
               </p>
             </label>
           )}
           <label className="block">
-            <span className="text-sm font-medium text-slate-700">E-posta</span>
+            <span className="text-sm font-medium text-slate-700">Email</span>
             <input
               type="email"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@university.edu"
+              placeholder="you@example.com"
               className="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none ring-coral-500/30 focus:border-coral-400 focus:ring-2"
               autoComplete="email"
             />

@@ -23,7 +23,7 @@ export async function GET(request: Request) {
     return NextResponse.json(
       {
         error:
-          "OPENWEATHER_API_KEY tanımlı değil — openweathermap.org API anahtarı .env.local'e eklenmeli",
+          "Weather service is not configured on the server. Please contact the maintainer.",
       },
       { status: 501 },
     );
@@ -33,13 +33,15 @@ export async function GET(request: Request) {
   url.searchParams.set("q", q);
   url.searchParams.set("appid", key);
   url.searchParams.set("units", "metric");
-  url.searchParams.set("lang", "tr");
+  url.searchParams.set("lang", "en");
 
   const res = await fetch(url, { next: { revalidate: 300 } });
   if (!res.ok) {
-    const t = await res.text();
     return NextResponse.json(
-      { error: "OpenWeather hatası", detail: t.slice(0, 200) },
+      {
+        error:
+          "We couldn't fetch the weather for that location. Try another city.",
+      },
       { status: 502 },
     );
   }
@@ -55,7 +57,7 @@ export async function GET(request: Request) {
 
   const code = data.sys?.country?.toUpperCase();
   const countryLabel =
-    code && /^[A-Z]{2}$/.test(code) ? countryNameFromCc(code, "tr") : "";
+    code && /^[A-Z]{2}$/.test(code) ? countryNameFromCc(code, "en") : "";
 
   return NextResponse.json({
     city: data.name ?? q,

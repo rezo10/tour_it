@@ -1,15 +1,16 @@
 import { countryNameFromCc } from "@/lib/geo/countryName";
 
 /**
- * Planör / Utility için ülkelere göre popüler şehirler (OpenWeather `q=city,cc` ile uyumlu).
- * Liste genişletilebilir; alfabetik ülke + şehir sıralı.
+ * Popular cities used by the Planner and Utility modules.
+ * Matches OpenWeather's `q=city,cc` lookup format. Sorted alphabetically by
+ * country, then by city.
  */
 
 export type PopularCity = {
   city: string;
-  /** İngilizce ülke adı (PlaceCoverImage / gösterim) */
+  /** English country name (used in PlaceCoverImage and display). */
   country: string;
-  /** ISO 3166-1 alpha-2 */
+  /** ISO 3166-1 alpha-2 code. */
   cc: string;
 };
 
@@ -20,7 +21,7 @@ function sortPlaces(a: PopularCity, b: PopularCity): number {
 }
 
 const RAW: PopularCity[] = [
-  // Türkiye
+  // Türkiye / Turkey
   { city: "Istanbul", country: "Turkey", cc: "TR" },
   { city: "Ankara", country: "Turkey", cc: "TR" },
   { city: "Izmir", country: "Turkey", cc: "TR" },
@@ -29,7 +30,7 @@ const RAW: PopularCity[] = [
   { city: "Cappadocia", country: "Turkey", cc: "TR" },
   { city: "Bursa", country: "Turkey", cc: "TR" },
   { city: "Trabzon", country: "Turkey", cc: "TR" },
-  // Avrupa
+  // Europe
   { city: "London", country: "United Kingdom", cc: "GB" },
   { city: "Edinburgh", country: "United Kingdom", cc: "GB" },
   { city: "Manchester", country: "United Kingdom", cc: "GB" },
@@ -79,7 +80,7 @@ const RAW: PopularCity[] = [
   { city: "Belgrade", country: "Serbia", cc: "RS" },
   { city: "Bucharest", country: "Romania", cc: "RO" },
   { city: "Sofia", country: "Bulgaria", cc: "BG" },
-  // Amerika
+  // North America
   { city: "New York", country: "United States", cc: "US" },
   { city: "Los Angeles", country: "United States", cc: "US" },
   { city: "Chicago", country: "United States", cc: "US" },
@@ -97,7 +98,7 @@ const RAW: PopularCity[] = [
   { city: "Cancun", country: "Mexico", cc: "MX" },
   { city: "Guadalajara", country: "Mexico", cc: "MX" },
   { city: "Havana", country: "Cuba", cc: "CU" },
-  // Latin Amerika
+  // Latin America
   { city: "Sao Paulo", country: "Brazil", cc: "BR" },
   { city: "Rio de Janeiro", country: "Brazil", cc: "BR" },
   { city: "Buenos Aires", country: "Argentina", cc: "AR" },
@@ -106,7 +107,7 @@ const RAW: PopularCity[] = [
   { city: "Santiago", country: "Chile", cc: "CL" },
   { city: "Bogota", country: "Colombia", cc: "CO" },
   { city: "Cartagena", country: "Colombia", cc: "CO" },
-  // Orta Doğu / Afrika
+  // Middle East & Africa
   { city: "Dubai", country: "United Arab Emirates", cc: "AE" },
   { city: "Abu Dhabi", country: "United Arab Emirates", cc: "AE" },
   { city: "Doha", country: "Qatar", cc: "QA" },
@@ -119,7 +120,7 @@ const RAW: PopularCity[] = [
   { city: "Johannesburg", country: "South Africa", cc: "ZA" },
   { city: "Nairobi", country: "Kenya", cc: "KE" },
   { city: "Lagos", country: "Nigeria", cc: "NG" },
-  // Asya
+  // Asia
   { city: "Tokyo", country: "Japan", cc: "JP" },
   { city: "Kyoto", country: "Japan", cc: "JP" },
   { city: "Osaka", country: "Japan", cc: "JP" },
@@ -145,7 +146,7 @@ const RAW: PopularCity[] = [
   { city: "Jaipur", country: "India", cc: "IN" },
   { city: "Goa", country: "India", cc: "IN" },
   { city: "Kathmandu", country: "Nepal", cc: "NP" },
-  // Okyanusya
+  // Oceania
   { city: "Sydney", country: "Australia", cc: "AU" },
   { city: "Melbourne", country: "Australia", cc: "AU" },
   { city: "Brisbane", country: "Australia", cc: "AU" },
@@ -156,7 +157,7 @@ const RAW: PopularCity[] = [
 
 export const popularCities: PopularCity[] = [...RAW].sort(sortPlaces);
 
-/** `Istanbul|TR` biçimi — benzersiz anahtar */
+/** Format: `Istanbul|TR` — uniquely identifies a city. */
 export function placeKey(p: PopularCity): string {
   return `${p.city}|${p.cc}`;
 }
@@ -170,13 +171,13 @@ export function parsePlaceKey(key: string): PopularCity | null {
   return (
     popularCities.find((p) => p.city === city && p.cc === cc) ?? {
       city,
-      country: countryNameFromCc(cc, "tr"),
+      country: countryNameFromCc(cc, "en"),
       cc,
     }
   );
 }
 
-/** Ülkeye göre gruplu (select optgroup için) */
+/** Group cities by country (useful for select optgroups). */
 export function citiesByCountry(): Map<string, PopularCity[]> {
   const m = new Map<string, PopularCity[]>();
   for (const p of popularCities) {

@@ -1,6 +1,6 @@
 import type { ItineraryPlan } from "@/types/itinerary";
 
-/** Serializable planner UI state for Supabase `planner_drafts.state` */
+/** Serialisable planner UI state, used to persist drafts in Supabase. */
 export type PlannerDraftState = {
   country: string;
   city: string;
@@ -11,6 +11,6 @@ export type PlannerDraftState = {
   audience: "any" | "family" | "solo";
   environment: "mixed" | "indoor" | "outdoor";
   showResult: boolean;
-  /** Present after user runs generate when we have mock/demo data */
+  /** Present after a generation succeeds. */
   itinerary: ItineraryPlan | null;
 };
