@@ -1,5 +1,5 @@
 ﻿import Link from "next/link";
-import { PlaceCoverImage } from "@/components/places/PlaceCoverImage";
+import { CityImage } from "@/components/CityImage";
 import type { ExplorePlanCard as ExplorePlanCardType } from "@/lib/mock-data";
 import { Calendar, MapPinned, User } from "lucide-react";
 
@@ -11,13 +11,10 @@ export function PlanCard({ plan }: Props) {
   return (
     <article className="group flex flex-col overflow-hidden rounded-2xl border border-navy-900/10 bg-cream-50 shadow-md shadow-navy-900/5 transition hover:border-coral-300/80 hover:shadow-lg">
       <div className="relative h-40 w-full overflow-hidden">
-        <PlaceCoverImage
+        <CityImage
           city={plan.city}
           country={plan.country}
-          height={160}
-          width={960}
-          variant="hero"
-          className="h-40"
+          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
         />
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-slate-950/75 via-slate-900/25 to-transparent" />
         <div className="absolute inset-0 flex flex-col justify-between p-4">

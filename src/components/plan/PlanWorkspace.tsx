@@ -12,7 +12,7 @@ import {
   friendlyPlanGenerateError,
 } from "@/lib/itinerary/apiErrors";
 import type { ItineraryPlan } from "@/types/itinerary";
-import { PlaceCoverImage } from "@/components/places/PlaceCoverImage";
+import { CityImage } from "@/components/CityImage";
 import { popularCities, type PopularCity } from "@/data/popularCities";
 import { Loader2, Save, Sparkles } from "lucide-react";
 
@@ -194,14 +194,12 @@ export function PlanWorkspace() {
         )}
       </header>
 
-      <div className="relative mb-8 overflow-hidden rounded-2xl border border-slate-200 shadow-sm">
-        <PlaceCoverImage
+      <div className="relative mb-8 h-[200px] overflow-hidden rounded-2xl border border-slate-200 shadow-sm">
+        <CityImage
           city={city}
           country={country}
-          height={200}
-          width={1600}
           priority
-          variant="hero"
+          sizes="(max-width: 1200px) 100vw, 1200px"
         />
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-slate-950/50 via-transparent to-transparent" />
         <div className="absolute bottom-0 left-0 right-0 flex items-end justify-between gap-4 p-5 sm:p-6">

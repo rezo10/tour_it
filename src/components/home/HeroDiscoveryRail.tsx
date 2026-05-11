@@ -1,5 +1,5 @@
 ﻿import Link from "next/link";
-import { PlaceCoverImage } from "@/components/places/PlaceCoverImage";
+import { CityImage } from "@/components/CityImage";
 import type { SeasonPick } from "@/lib/places/seasonalPicks";
 import { CalendarRange } from "lucide-react";
 
@@ -37,12 +37,10 @@ export function HeroDiscoveryRail({ title, subtitle, picks, orderClass = "" }: P
               className="group flex gap-3 rounded-xl border border-transparent p-1.5 transition hover:border-coral-100 hover:bg-white/80"
             >
               <div className="relative h-[4.5rem] w-[5.25rem] shrink-0 overflow-hidden rounded-lg ring-1 ring-slate-200/60">
-                <PlaceCoverImage
+                <CityImage
                   city={pick.city}
                   country={pick.country}
-                  height={72}
-                  width={320}
-                  variant="subtle"
+                  sizes="96px"
                   className="transition duration-300 group-hover:scale-[1.03]"
                 />
               </div>

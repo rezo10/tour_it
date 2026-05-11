@@ -1,4 +1,4 @@
-﻿import { PlaceCoverImage } from "@/components/places/PlaceCoverImage";
+﻿import { CityImage } from "@/components/CityImage";
 import type { ItineraryPlan } from "@/types/itinerary";
 import { CalendarDays, Clock, MapPin } from "lucide-react";
 
@@ -10,13 +10,12 @@ export function ItineraryPanel({ plan }: Props) {
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
       <div className="relative h-32 w-full shrink-0 overflow-hidden">
-        <PlaceCoverImage
+        <CityImage
           city={plan.city}
           country={plan.country}
-          height={128}
-          width={1200}
-          variant="subtle"
+          sizes="(max-width: 1200px) 100vw, 600px"
         />
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-slate-950/35 via-transparent to-transparent" />
       </div>
       <div className="border-b border-slate-100 bg-white px-5 py-4">
         <h2 className="text-lg font-semibold text-slate-900">{plan.title}</h2>

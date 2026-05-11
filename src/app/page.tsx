@@ -1,6 +1,6 @@
 ﻿import Link from "next/link";
 import { HeroDiscoveryRail } from "@/components/home/HeroDiscoveryRail";
-import { PlaceCoverImage } from "@/components/places/PlaceCoverImage";
+import { CityImage } from "@/components/CityImage";
 import { getSeasonalRails } from "@/lib/places/seasonalPicks";
 import { PlanCard } from "@/components/explore/PlanCard";
 import type { ExplorePlanCard } from "@/lib/mock-data";
@@ -197,13 +197,11 @@ export default async function HomePage() {
               href="/plan"
               className="group relative block h-56 overflow-hidden rounded-2xl border border-slate-200/80 shadow-md ring-1 ring-slate-200/60 transition hover:border-coral-200 hover:shadow-lg"
             >
-              <PlaceCoverImage
+              <CityImage
                 city={f.name}
                 country={f.country}
-                height={224}
-                width={1200}
                 priority={index === 0}
-                variant="hero"
+                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 33vw, 400px"
                 className="transition duration-300 group-hover:scale-[1.02]"
               />
               <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-900/35 to-transparent" />

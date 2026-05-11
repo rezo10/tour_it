@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { PlaceCoverImage } from "@/components/places/PlaceCoverImage";
+import { CityImage } from "@/components/CityImage";
 import {
   popularCities,
   placeKey,
@@ -255,13 +255,11 @@ export function UtilityWorkspace() {
         </p>
       </header>
 
-      <div className="relative mb-8 overflow-hidden rounded-2xl border border-slate-200 shadow-sm">
-        <PlaceCoverImage
+      <div className="relative mb-8 h-44 overflow-hidden rounded-2xl border border-slate-200 shadow-sm">
+        <CityImage
           city={displayCity}
           country={displayCountry}
-          height={176}
-          width={1400}
-          variant="hero"
+          sizes="(max-width: 1200px) 100vw, 1200px"
         />
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-slate-950/65 via-slate-900/15 to-transparent" />
         <div className="absolute bottom-0 left-0 p-5 sm:p-6">

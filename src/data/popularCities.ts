@@ -8,7 +8,7 @@ import { countryNameFromCc } from "@/lib/geo/countryName";
 
 export type PopularCity = {
   city: string;
-  /** English country name (used in PlaceCoverImage and display). */
+  /** English country name (used in CityImage and display). */
   country: string;
   /** ISO 3166-1 alpha-2 code. */
   cc: string;
