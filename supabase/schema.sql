@@ -1,7 +1,8 @@
 -- Tour It — Full database schema (Supabase).
 -- Run in Supabase → SQL Editor once. Re-run is safe (uses IF NOT EXISTS).
 -- This single file is equivalent to running the migrations in order:
---   001 (planner_drafts), 002 (ERD), 003 (display_name trigger), 004 (community fields).
+--   001 (planner_drafts), 002 (ERD), 003 (display_name trigger),
+--   004 (community fields), 005 (admin role).
 
 -- =========================================================================
 -- 1) Planner draft (legacy table used by the planner UI sync)
@@ -40,13 +41,42 @@ create table if not exists public.profiles (
   display_name text,
   bio text,
   avatar_url text,
+  role text not null default 'user',
   updated_at timestamptz not null default now()
 );
 
 alter table public.profiles
-  add column if not exists avatar_url text;
+  add column if not exists avatar_url text,
+  add column if not exists role text not null default 'user';
+
+do $$
+begin
+  if not exists (
+    select 1 from pg_constraint where conname = 'profiles_role_check'
+  ) then
+    alter table public.profiles
+      add constraint profiles_role_check
+      check (role in ('user', 'admin'));
+  end if;
+end$$;
 
 alter table public.profiles enable row level security;
+
+-- Helper used in policies below — returns true when the calling user is admin.
+create or replace function public.is_admin()
+returns boolean
+language sql
+security definer
+stable
+set search_path = public
+as $$
+  select coalesce(
+    (select role = 'admin' from public.profiles where id = auth.uid()),
+    false
+  );
+$$;
+
+grant execute on function public.is_admin() to anon, authenticated;
 
 drop policy if exists "Profiles are viewable by everyone" on public.profiles;
 drop policy if exists "Users can update own profile"     on public.profiles;
@@ -132,7 +162,7 @@ create policy "Anyone can view public plans" on public.plans for select using (i
 create policy "Users can view own plans"     on public.plans for select using (auth.uid() = user_id);
 create policy "Users can insert own plans"   on public.plans for insert with check (auth.uid() = user_id);
 create policy "Users can update own plans"   on public.plans for update using (auth.uid() = user_id);
-create policy "Users can delete own plans"   on public.plans for delete using (auth.uid() = user_id);
+create policy "Users can delete own plans"   on public.plans for delete using (auth.uid() = user_id or public.is_admin());
 
 create table if not exists public.plan_days (
   id uuid primary key default gen_random_uuid(),
@@ -229,9 +259,9 @@ create policy "Posts are readable by everyone"
 create policy "Authenticated users can create posts"
   on public.posts for insert with check (auth.uid() = user_id);
 create policy "Users can update own posts"
-  on public.posts for update using (auth.uid() = user_id);
+  on public.posts for update using (auth.uid() = user_id or public.is_admin());
 create policy "Users can delete own posts"
-  on public.posts for delete using (auth.uid() = user_id);
+  on public.posts for delete using (auth.uid() = user_id or public.is_admin());
 
 -- =========================================================================
 -- 5) Comments (with nested replies via parent_comment_id)
@@ -262,9 +292,9 @@ create policy "Comments readable for post viewers"
 create policy "Authenticated users can comment"
   on public.comments for insert with check (auth.uid() = user_id);
 create policy "Users can update own comments"
-  on public.comments for update using (auth.uid() = user_id);
+  on public.comments for update using (auth.uid() = user_id or public.is_admin());
 create policy "Users can delete own comments"
-  on public.comments for delete using (auth.uid() = user_id);
+  on public.comments for delete using (auth.uid() = user_id or public.is_admin());
 
 -- =========================================================================
 -- 6) Post likes

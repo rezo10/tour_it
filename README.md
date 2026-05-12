@@ -73,6 +73,23 @@ by the app. If you prefer step-by-step migrations they live in
 2. `003_nickname_metadata.sql` — Default `display_name` extraction trigger.
 3. `004_community_and_avatars.sql` — Adds post title/category/image/plan
    link, comment `parent_comment_id`, profile `avatar_url`.
+4. `005_admin_role.sql` — `profiles.role` column + `public.is_admin()`
+   helper + RLS policies that let admins delete any post/comment/plan.
+
+### Promoting a user to admin
+
+After the user has signed up at least once, run this one-liner in
+**Supabase → SQL Editor** (replace the email):
+
+```sql
+update public.profiles
+set role = 'admin'
+where id = (select id from auth.users where email = 'YOUR_EMAIL@example.com');
+```
+
+Admins get a small `Admin` badge next to their name everywhere, and a
+`Delete` button on every post and comment (not just their own). To
+revoke, set `role = 'user'` the same way.
 
 ## Project structure
 

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Avatar } from "@/components/profile/Avatar";
+import { AdminBadge } from "@/components/common/AdminBadge";
 import { FollowButton } from "@/components/profile/FollowButton";
 import {
   UserPlansList,
@@ -30,7 +31,7 @@ export default async function PublicProfilePage({
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("id, display_name, bio, avatar_url")
+    .select("id, display_name, bio, avatar_url, role")
     .eq("id", id)
     .maybeSingle();
 
@@ -111,9 +112,12 @@ export default async function PublicProfilePage({
         <div className="flex flex-col items-center gap-4 text-center sm:flex-row sm:items-start sm:text-left">
           <Avatar url={profile.avatar_url ?? null} size="lg" alt={displayName} />
           <div className="flex-1">
-            <h1 className="text-2xl font-bold text-slate-900">
-              @{displayName}
-            </h1>
+            <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
+              <h1 className="text-2xl font-bold text-slate-900">
+                @{displayName}
+              </h1>
+              {profile.role === "admin" && <AdminBadge />}
+            </div>
             {profile.bio && (
               <p className="mt-2 max-w-xl text-sm text-slate-700">
                 {profile.bio}

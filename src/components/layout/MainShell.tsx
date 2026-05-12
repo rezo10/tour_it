@@ -12,6 +12,7 @@ export async function MainShell({ children }: { children: React.ReactNode }) {
     email: string;
     nick: string | null;
     avatarUrl: string | null;
+    isAdmin: boolean;
   } | null = null;
   if (configured) {
     const supabase = await createClient();
@@ -21,7 +22,7 @@ export async function MainShell({ children }: { children: React.ReactNode }) {
     if (u) {
       const { data: prof } = await supabase
         .from("profiles")
-        .select("display_name, avatar_url")
+        .select("display_name, avatar_url, role")
         .eq("id", u.id)
         .maybeSingle();
       const raw = prof?.display_name?.trim();
@@ -30,6 +31,7 @@ export async function MainShell({ children }: { children: React.ReactNode }) {
         email: u.email ?? "",
         nick: raw && raw.length > 0 ? raw : null,
         avatarUrl: prof?.avatar_url ?? null,
+        isAdmin: prof?.role === "admin",
       };
     }
   }

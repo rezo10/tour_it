@@ -1,6 +1,7 @@
 ﻿import Link from "next/link";
 import { ProfileForm } from "@/components/profile/ProfileForm";
 import { Avatar } from "@/components/profile/Avatar";
+import { AdminBadge } from "@/components/common/AdminBadge";
 import {
   UserPlansList,
   type UserPlanRow,
@@ -56,7 +57,7 @@ export default async function ProfilePage() {
     await Promise.all([
       supabase
         .from("profiles")
-        .select("display_name, bio, avatar_url")
+        .select("display_name, bio, avatar_url, role")
         .eq("id", user.id)
         .maybeSingle(),
       supabase
@@ -112,9 +113,12 @@ export default async function ProfilePage() {
         <div className="flex flex-col items-center gap-4 text-center sm:flex-row sm:items-start sm:text-left">
           <Avatar url={profile?.avatar_url ?? null} size="lg" />
           <div className="flex-1">
-            <h1 className="text-2xl font-bold text-slate-900">
-              {profile?.display_name ?? user.email}
-            </h1>
+            <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
+              <h1 className="text-2xl font-bold text-slate-900">
+                {profile?.display_name ?? user.email}
+              </h1>
+              {profile?.role === "admin" && <AdminBadge />}
+            </div>
             <p className="mt-1 text-sm text-slate-600">{user.email}</p>
             {profile?.bio && (
               <p className="mt-2 max-w-xl text-sm text-slate-700">

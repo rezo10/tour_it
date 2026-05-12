@@ -140,13 +140,41 @@ export async function deleteComment(commentId: string) {
   } = await supabase.auth.getUser();
   if (!user) return { error: "You need to sign in." as const };
 
-  const { error } = await supabase
+  // RLS allows owner OR admin (migration 005). We don't restrict here so
+  // that admins can moderate; non-admin non-owners get 0 rows + no error.
+  const { error, count } = await supabase
     .from("comments")
-    .delete()
-    .eq("id", commentId)
-    .eq("user_id", user.id);
+    .delete({ count: "exact" })
+    .eq("id", commentId);
 
   if (error) return { error: error.message };
+  if ((count ?? 0) === 0) {
+    return {
+      error: "You don't have permission to delete this comment." as const,
+    };
+  }
+  revalidatePath("/community");
+  return { success: true as const };
+}
+
+export async function deletePost(postId: string) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "You need to sign in." as const };
+
+  const { error, count } = await supabase
+    .from("posts")
+    .delete({ count: "exact" })
+    .eq("id", postId);
+
+  if (error) return { error: error.message };
+  if ((count ?? 0) === 0) {
+    return {
+      error: "You don't have permission to delete this post." as const,
+    };
+  }
   revalidatePath("/community");
   return { success: true as const };
 }

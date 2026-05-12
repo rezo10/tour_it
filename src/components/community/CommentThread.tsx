@@ -3,12 +3,14 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createComment, deleteComment } from "@/app/actions/community";
+import { AdminBadge } from "@/components/common/AdminBadge";
 import { CornerDownRight, MessageCircle, Trash2 } from "lucide-react";
 
 export type CommentNode = {
   id: string;
   author: string;
   authorId: string;
+  authorIsAdmin: boolean;
   content: string;
   createdAt: string;
   parentId: string | null;
@@ -20,6 +22,7 @@ type Props = {
   postId: string;
   comments: CommentNode[];
   canInteract: boolean;
+  viewerIsAdmin: boolean;
 };
 
 function formatTime(iso: string) {
@@ -39,11 +42,13 @@ function CommentItem({
   postId,
   node,
   canInteract,
+  viewerIsAdmin,
   depth,
 }: {
   postId: string;
   node: CommentNode;
   canInteract: boolean;
+  viewerIsAdmin: boolean;
   depth: number;
 }) {
   const router = useRouter();
@@ -52,6 +57,7 @@ function CommentItem({
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
   const indent = Math.min(depth, 3) * 16;
+  const canDelete = node.isMine || viewerIsAdmin;
 
   function submitReply() {
     if (!reply.trim()) return;
@@ -98,16 +104,21 @@ function CommentItem({
               />
             )}
             <span className="font-semibold text-slate-900">{node.author}</span>
+            {node.authorIsAdmin && <AdminBadge compact />}
             <span className="text-slate-400">·</span>
             <span className="text-slate-500">{formatTime(node.createdAt)}</span>
           </div>
-          {node.isMine && (
+          {canDelete && (
             <button
               type="button"
               onClick={onDelete}
               disabled={pending}
               className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] font-medium text-slate-500 transition hover:bg-rose-50 hover:text-rose-700 disabled:opacity-50"
-              title="Delete comment"
+              title={
+                node.isMine
+                  ? "Delete your comment"
+                  : "Delete this comment (admin moderation)"
+              }
             >
               <Trash2 className="h-3 w-3" aria-hidden />
               Delete
@@ -173,6 +184,7 @@ function CommentItem({
               postId={postId}
               node={child}
               canInteract={canInteract}
+              viewerIsAdmin={viewerIsAdmin}
               depth={depth + 1}
             />
           ))}
@@ -182,7 +194,12 @@ function CommentItem({
   );
 }
 
-export function CommentThread({ postId, comments, canInteract }: Props) {
+export function CommentThread({
+  postId,
+  comments,
+  canInteract,
+  viewerIsAdmin,
+}: Props) {
   const router = useRouter();
   const [text, setText] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -223,6 +240,7 @@ export function CommentThread({ postId, comments, canInteract }: Props) {
               postId={postId}
               node={node}
               canInteract={canInteract}
+              viewerIsAdmin={viewerIsAdmin}
               depth={0}
             />
           ))}

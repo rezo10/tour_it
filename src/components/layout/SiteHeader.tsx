@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Menu } from "lucide-react";
 import { Avatar } from "@/components/profile/Avatar";
+import { AdminBadge } from "@/components/common/AdminBadge";
 import { SignOutButton } from "@/components/layout/SignOutButton";
 
 const nav = [
@@ -18,6 +19,7 @@ type HeaderUser = {
   email: string;
   nick: string | null;
   avatarUrl: string | null;
+  isAdmin: boolean;
 } | null;
 
 export function SiteHeader({ user }: { user: HeaderUser }) {
@@ -64,6 +66,7 @@ export function SiteHeader({ user }: { user: HeaderUser }) {
                 <span className="hidden max-w-[140px] truncate sm:inline">
                   @{shownName}
                 </span>
+                {user.isAdmin && <AdminBadge compact />}
               </Link>
               <SignOutButton />
             </>

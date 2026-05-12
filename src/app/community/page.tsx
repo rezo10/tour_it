@@ -27,7 +27,7 @@ type PostRow = {
   image_url: string | null;
   created_at: string;
   user_id: string;
-  profiles: { display_name: string | null } | null;
+  profiles: { display_name: string | null; role: string | null } | null;
 };
 
 type CommentRow = {
@@ -37,7 +37,7 @@ type CommentRow = {
   parent_comment_id: string | null;
   content: string;
   created_at: string;
-  profiles: { display_name: string | null } | null;
+  profiles: { display_name: string | null; role: string | null } | null;
 };
 
 function buildCommentTree(
@@ -50,6 +50,7 @@ function buildCommentTree(
       id: c.id,
       author: c.profiles?.display_name?.trim() || c.user_id.slice(0, 8),
       authorId: c.user_id,
+      authorIsAdmin: c.profiles?.role === "admin",
       content: c.content,
       createdAt: c.created_at,
       parentId: c.parent_comment_id,
@@ -99,10 +100,20 @@ export default async function CommunityPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
+  let viewerIsAdmin = false;
+  if (user) {
+    const { data: viewerProfile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .maybeSingle();
+    viewerIsAdmin = viewerProfile?.role === "admin";
+  }
+
   const { data: postsData, error: postsError } = await supabase
     .from("posts")
     .select(
-      "id, title, content, category, image_url, created_at, user_id, profiles ( display_name )",
+      "id, title, content, category, image_url, created_at, user_id, profiles ( display_name, role )",
     )
     .order("created_at", { ascending: false })
     .limit(40);
@@ -112,8 +123,8 @@ export default async function CommunityPage() {
     posts = postsData.map((r) => {
       const raw = r as unknown as Omit<PostRow, "profiles"> & {
         profiles:
-          | { display_name: string | null }
-          | { display_name: string | null }[]
+          | { display_name: string | null; role: string | null }
+          | { display_name: string | null; role: string | null }[]
           | null;
       };
       const profiles = Array.isArray(raw.profiles)
@@ -147,7 +158,7 @@ export default async function CommunityPage() {
     const { data: commentRows } = await supabase
       .from("comments")
       .select(
-        "id, post_id, user_id, parent_comment_id, content, created_at, profiles ( display_name )",
+        "id, post_id, user_id, parent_comment_id, content, created_at, profiles ( display_name, role )",
       )
       .in("post_id", postIds)
       .order("created_at", { ascending: true });
@@ -156,8 +167,8 @@ export default async function CommunityPage() {
       const normalized: CommentRow[] = commentRows.map((c) => {
         const raw = c as unknown as Omit<CommentRow, "profiles"> & {
           profiles:
-            | { display_name: string | null }
-            | { display_name: string | null }[]
+            | { display_name: string | null; role: string | null }
+            | { display_name: string | null; role: string | null }[]
             | null;
         };
         const profiles = Array.isArray(raw.profiles)
@@ -224,6 +235,7 @@ export default async function CommunityPage() {
                 post.profiles?.display_name?.trim() || post.user_id.slice(0, 8)
               }
               authorId={post.user_id}
+              authorIsAdmin={post.profiles?.role === "admin"}
               timeLabel={formatTime(post.created_at)}
               title={post.title}
               content={post.content}
@@ -233,6 +245,8 @@ export default async function CommunityPage() {
               comments={commentRoots.get(post.id) ?? []}
               canInteract={!!user}
               likedByMe={myLikes.has(post.id)}
+              isMine={user?.id === post.user_id}
+              viewerIsAdmin={viewerIsAdmin}
             />
           ))
         )}
