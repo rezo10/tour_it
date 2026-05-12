@@ -1,9 +1,15 @@
-﻿import Link from "next/link";
+﻿/**
+ * /explore route. Lists the 60 most recently updated public plans with
+ * an optional `?type=` filter for trip style. Rendered on the server so
+ * filters work via plain hyperlinks (no client JS required).
+ */
+import Link from "next/link";
 import { PlanCard } from "@/components/explore/PlanCard";
 import type { ExplorePlanCard } from "@/lib/mock-data";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 
+// Rotating gradient palette assigned to each card by index.
 const coverGradients = [
   "from-accent-200 via-coral-100 to-cream-50",
   "from-amber-100 via-orange-50 to-coral-100",
@@ -12,9 +18,11 @@ const coverGradients = [
   "from-rose-100 via-orange-50 to-amber-50",
 ];
 
+// Closed list of trip styles surfaced as filter chips.
 const TRIP_TYPES = ["All", "Relaxing", "Adventure", "Cultural"] as const;
 type TripFilter = (typeof TRIP_TYPES)[number];
 
+// Map an arbitrary query-string value into one of the allowed filters.
 function normalizeFilter(value: string | string[] | undefined): TripFilter {
   const raw = Array.isArray(value) ? value[0] : value;
   const match = TRIP_TYPES.find(
@@ -59,6 +67,7 @@ export default async function ExplorePage({
       .order("updated_at", { ascending: false })
       .limit(60);
 
+    // Case-insensitive match so "Cultural"/"cultural" both work.
     if (tripFilter !== "All") {
       query = query.ilike("trip_type", tripFilter);
     }

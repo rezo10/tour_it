@@ -23,6 +23,7 @@ export type PreferenceInput = {
   environment: EnvironmentPref | string;
 };
 
+// Normalise a 0–100 slider value (guards against NaN and out-of-range input).
 function clamp(n: number): number {
   if (Number.isNaN(n)) return 50;
   return Math.min(100, Math.max(0, Math.round(n)));

@@ -14,6 +14,7 @@ export type PopularCity = {
   cc: string;
 };
 
+// Group cities by country, then alphabetically within each country.
 function sortPlaces(a: PopularCity, b: PopularCity): number {
   const c = a.country.localeCompare(b.country, "en");
   if (c !== 0) return c;
@@ -155,6 +156,7 @@ const RAW: PopularCity[] = [
   { city: "Wellington", country: "New Zealand", cc: "NZ" },
 ];
 
+// Public sorted list consumed by the Planner and Utility selectors.
 export const popularCities: PopularCity[] = [...RAW].sort(sortPlaces);
 
 /** Format: `Istanbul|TR` — uniquely identifies a city. */
@@ -162,6 +164,11 @@ export function placeKey(p: PopularCity): string {
   return `${p.city}|${p.cc}`;
 }
 
+/**
+ * Reverse of placeKey: turns a "City|CC" string back into a PopularCity.
+ * Falls back to deriving the country name from the cc when the exact pair
+ * isn't in the curated list, so user-typed values still work.
+ */
 export function parsePlaceKey(key: string): PopularCity | null {
   const i = key.lastIndexOf("|");
   if (i <= 0) return null;

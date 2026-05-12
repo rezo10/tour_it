@@ -1,4 +1,10 @@
-﻿"use client";
+﻿/**
+ * The interactive card for a single community post. Renders the
+ * author + metadata, the image (if any) and content, plus the like
+ * button, comment toggle, and admin/owner delete control. The nested
+ * <CommentThread> is lazy-mounted only when the user opens it.
+ */
+"use client";
 
 import Link from "next/link";
 import Image from "next/image";
@@ -46,10 +52,13 @@ export function PostCardInteractive({
 }: Props) {
   const router = useRouter();
   const [pending, start] = useTransition();
+  // Fall back to text-only if the supplied image URL fails to load.
   const [imageBroken, setImageBroken] = useState(false);
+  // Comments stay collapsed until the user explicitly toggles them.
   const [open, setOpen] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
+  // Owner OR admin can delete. The server action enforces this via RLS.
   const canDelete = isMine || viewerIsAdmin;
 
   function onLike() {
@@ -74,6 +83,7 @@ export function PostCardInteractive({
     });
   }
 
+  // Recursive count so nested replies are included in the badge total.
   const totalComments = (function count(nodes: CommentNode[]): number {
     return nodes.reduce(
       (acc, n) => acc + 1 + count(n.children),

@@ -1,3 +1,8 @@
+/**
+ * /profile/[id] — public-facing profile page for any user. Only shows
+ * the user's *public* plans plus their posts. The owner sees an "Edit
+ * profile" shortcut; signed-in visitors see a Follow / Unfollow button.
+ */
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Avatar } from "@/components/profile/Avatar";
@@ -22,6 +27,7 @@ export default async function PublicProfilePage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  // No DB? Treat the profile as missing rather than crashing the page.
   if (!isSupabaseConfigured()) notFound();
 
   const supabase = await createClient();
@@ -37,8 +43,11 @@ export default async function PublicProfilePage({
 
   if (!profile) notFound();
 
+  // Used below to flip the header CTA between "Edit profile" and Follow button.
   const isOwn = user?.id === profile.id;
 
+  // Five parallel queries: public plans + posts + follower/following
+  // counts + the viewer's own follow relationship with this profile.
   const [
     { data: rawPlans },
     { data: rawPosts },

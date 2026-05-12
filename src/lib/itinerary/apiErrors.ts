@@ -8,15 +8,19 @@ export function friendlyPlanGenerateError(
   payload: { error?: string; code?: string },
 ): string {
   const raw = typeof payload.error === "string" ? payload.error.trim() : "";
+  // Heuristic: anything too long or that mentions internals is "technical".
   const looksTechnical =
     raw.length > 280 ||
     /GoogleGenerativeAI|generativelanguage\.googleapis|v1beta|Error fetching|stack|JSON\.parse/i.test(
       raw,
     );
 
+  // If the server already returned a polished, short message — pass it through.
   if (raw && !looksTechnical) {
     return raw;
   }
+
+  // Otherwise translate the HTTP status / error code into a friendly line.
 
   if (status === 401) {
     return "You need to sign in before generating an itinerary.";

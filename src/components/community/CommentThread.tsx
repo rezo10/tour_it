@@ -1,3 +1,9 @@
+/**
+ * Recursive comment thread rendered under each community post. Receives
+ * a pre-built tree (built server-side in /community/page.tsx) and lets
+ * signed-in users reply or delete their own comments inline. Admins
+ * can delete any comment thanks to RLS policies on the comments table.
+ */
 "use client";
 
 import { useState, useTransition } from "react";
@@ -6,6 +12,7 @@ import { createComment, deleteComment } from "@/app/actions/community";
 import { AdminBadge } from "@/components/common/AdminBadge";
 import { CornerDownRight, MessageCircle, Trash2 } from "lucide-react";
 
+/** One node in the rendered tree. `children` are nested replies. */
 export type CommentNode = {
   id: string;
   author: string;
@@ -56,7 +63,9 @@ function CommentItem({
   const [reply, setReply] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
+  // Cap visual nesting at depth 3 so deep threads don't slide off-screen.
   const indent = Math.min(depth, 3) * 16;
+  // Comment owners can always delete; admins can delete anyone's.
   const canDelete = node.isMine || viewerIsAdmin;
 
   function submitReply() {

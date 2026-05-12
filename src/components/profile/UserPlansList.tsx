@@ -1,3 +1,8 @@
+/**
+ * Compact list of saved plans shown on a user's profile. Pure render
+ * component — the parent page does the Supabase read and maps rows
+ * into the `UserPlanRow` shape this component expects.
+ */
 import { Calendar, Globe2, Lock } from "lucide-react";
 
 export type UserPlanRow = {

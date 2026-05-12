@@ -1,3 +1,8 @@
+/**
+ * Small client-side button that signs the current user out via the
+ * browser Supabase client, then refreshes the route tree and routes
+ * back to the home page.
+ */
 "use client";
 
 import { useRouter } from "next/navigation";
@@ -9,6 +14,8 @@ export function SignOutButton() {
   async function handleSignOut() {
     const supabase = createClient();
     await supabase.auth.signOut();
+    // refresh() invalidates server-component caches (so the header no
+    // longer shows the previous user), then we navigate home.
     router.refresh();
     router.push("/");
   }

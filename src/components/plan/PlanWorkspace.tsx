@@ -1,3 +1,9 @@
+/**
+ * The full planner workspace mounted at /plan. Houses the form
+ * (country / city / trip-type / preferences), calls the /api/itinerary
+ * endpoint to generate a plan via Gemini, and renders the resulting
+ * itinerary alongside an interactive Mapbox map.
+ */
 "use client";
 
 import dynamic from "next/dynamic";
@@ -17,6 +23,8 @@ import { popularCities, type PopularCity } from "@/data/popularCities";
 import { summarizePreferences } from "@/lib/itinerary/preferences";
 import { Loader2, Save, Sparkles } from "lucide-react";
 
+// MapboxMap is loaded client-side only — it requires a real browser
+// environment to initialise its WebGL context.
 const MapboxMap = dynamic(
   () =>
     import("@/components/plan/MapboxMap").then((m) => ({
@@ -33,6 +41,7 @@ function MapLoading() {
   );
 }
 
+// Trip-style buttons offered above the planner form.
 const tripTypes = [
   "Cultural",
   "Relaxing",
@@ -41,10 +50,12 @@ const tripTypes = [
   "Urban",
 ] as const;
 
+// Seed value so the form is never empty on first paint.
 const DEFAULT_CITY: PopularCity =
   popularCities.find((p) => p.city === "Lisbon") ?? popularCities[0]!;
 
 export function PlanWorkspace() {
+  // Distinct sorted country list, derived once from the curated cities table.
   const countries = useMemo(
     () =>
       [...new Set(popularCities.map((p) => p.country))].sort((a, b) =>
@@ -79,12 +90,18 @@ export function PlanWorkspace() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
+  // When the country changes, re-anchor the city to the first city in
+  // that country (otherwise the old selection would be off the list).
   function handleCountry(c: string) {
     setCountry(c);
     const first = popularCities.find((p) => p.country === c);
     if (first) setCity(first.city);
   }
 
+  /**
+   * Call the /api/itinerary endpoint with the current form state.
+   * Maps server errors to friendly messages via apiErrors.ts.
+   */
   async function handleGenerate() {
     setAiError(null);
     setSaveMsg(null);
@@ -147,11 +164,13 @@ export function PlanWorkspace() {
     environment,
   };
 
+  // Human-readable pills summarising the current slider/enum state.
   const preferenceTokens = useMemo(
     () => summarizePreferences({ walking, nightlife, audience, environment }),
     [walking, nightlife, audience, environment],
   );
 
+  /** Persist the generated itinerary + preferences to Supabase. */
   async function handleSave() {
     if (!itinerary) {
       setSaveError("Generate an itinerary first, then you can save it.");

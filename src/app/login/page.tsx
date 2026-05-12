@@ -1,3 +1,8 @@
+/**
+ * /login route. Thin server-component wrapper that streams the real
+ * <LoginForm> (a client component) inside a Suspense boundary so the
+ * page renders immediately even before form JS is hydrated.
+ */
 import { Suspense } from "react";
 import { LoginForm } from "./login-form";
 

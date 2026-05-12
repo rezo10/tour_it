@@ -1,4 +1,9 @@
-﻿import Link from "next/link";
+﻿/**
+ * Compact two-row rail used in the home hero to surface "in season" and
+ * "coming up" destinations. Receives two picks at a time and links each
+ * one to the trip planner.
+ */
+import Link from "next/link";
 import { CityImage } from "@/components/CityImage";
 import type { SeasonPick } from "@/lib/places/seasonalPicks";
 import { CalendarRange } from "lucide-react";

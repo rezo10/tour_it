@@ -1,3 +1,9 @@
+/**
+ * Reusable city/destination cover image. Looks up a photo via Unsplash
+ * (cached per session in lib/getCityImage.ts), shows a skeleton until
+ * the URL resolves, and falls back to a Mapbox-style placeholder if the
+ * final URL fails to load.
+ */
 "use client";
 
 import Image from "next/image";
@@ -44,9 +50,11 @@ export function CityImage({
 
   useEffect(() => {
     let cancelled = false;
+    // Coerce empty inputs so the lookup helper still has something to search.
     const safeCity = city?.trim() ? city : "travel";
     const safeCountry = country?.trim() ? country : "destination";
     void getCityImage(safeCity, safeCountry).then((url) => {
+      // Guard against setting state after the component has unmounted.
       if (!cancelled) setSrc(url);
     });
     return () => {
@@ -54,6 +62,7 @@ export function CityImage({
     };
   }, [city, country]);
 
+  // Pulsing placeholder while the Unsplash URL is in flight.
   if (!src) {
     return (
       <div

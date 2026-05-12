@@ -1,4 +1,11 @@
-/** Home hero: month-based "now / next" destination suggestions (static rules). */
+/**
+ * Home hero: month-based "now / next" destination suggestions (static rules).
+ *
+ * The home page renders two small rails — what's good *right now* and a
+ * preview of *next month* — based on a hand-curated table keyed by month.
+ * Pure data + a tiny derive function; no network or random selection so
+ * the page is fully deterministic and SSR-friendly.
+ */
 
 export type SeasonPick = {
   city: string;
@@ -160,10 +167,16 @@ const ROTATION: Array<{
   },
 ];
 
+/**
+ * Pick the picks-rows for "this month" and label them for the UI.
+ * `right` is a preview of the *following* calendar month so users always
+ * see a "next" set too.
+ */
 export function getSeasonalRails(now: Date): SeasonalRails {
   const m = now.getMonth();
   const y = now.getFullYear();
   const label = `${MONTHS_EN[m]} ${y}`;
+  // Roll over to January of next year when the current month is December.
   const nextM = (m + 1) % 12;
   const nextY = nextM === 0 ? y + 1 : y;
   const nextLabel = `${MONTHS_EN[nextM]} ${nextY}`;

@@ -1,3 +1,8 @@
+/**
+ * Compact list of recent community posts shown on a profile page.
+ * Truncates each post's body to three lines via line-clamp; the parent
+ * page handles the actual data fetch.
+ */
 import { Tag } from "lucide-react";
 
 export type UserPostRow = {
@@ -8,6 +13,7 @@ export type UserPostRow = {
   createdAt: string;
 };
 
+// "X minutes ago / Y hours ago / Z days ago" formatter for the timestamp row.
 function formatTime(iso: string) {
   const d = new Date(iso);
   const diff = Math.max(0, Date.now() - d.getTime());

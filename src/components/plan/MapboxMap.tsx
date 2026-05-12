@@ -1,10 +1,17 @@
-﻿"use client";
+﻿/**
+ * Mapbox GL map for the planner. Drops a numbered marker for every
+ * activity in the generated itinerary and auto-fits the view to the
+ * bounding box of those markers. Runs in the browser only — the parent
+ * loads this component dynamically with `ssr: false`.
+ */
+"use client";
 
 import { useEffect, useRef } from "react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import type { ItineraryPlan } from "@/types/itinerary";
 
+// Accept either of two env var spellings to keep deployments tolerant.
 function getToken(): string {
   return (
     process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN?.trim() ||
@@ -26,17 +33,20 @@ export function MapboxMap({ plan }: Props) {
   useEffect(() => {
     if (!containerRef.current || !token) return;
 
+    // Flatten "day → activities" into a single list of points to plot.
     const pts = plan.days.flatMap((d) => d.activities);
     if (pts.length === 0) return;
 
     mapboxgl.accessToken = token;
 
+    // Compute the bounding box that contains every marker.
     const lngs = pts.map((p) => p.lng);
     const lats = pts.map((p) => p.lat);
     const minLng = Math.min(...lngs);
     const maxLng = Math.max(...lngs);
     const minLat = Math.min(...lats);
     const maxLat = Math.max(...lats);
+    // Special-case a single coincident point so fitBounds doesn't NaN out.
     const singlePoint = minLng === maxLng && minLat === maxLat;
 
     const map = singlePoint
@@ -58,8 +68,10 @@ export function MapboxMap({ plan }: Props) {
 
     mapRef.current = map;
 
+    // Zoom + pan controls in the corner.
     map.addControl(new mapboxgl.NavigationControl(), "top-right");
 
+    // Drop a teal marker for every activity, with a popup carrying its name.
     for (const p of pts) {
       new mapboxgl.Marker({ color: "#0d9488" })
         .setLngLat([p.lng, p.lat])
@@ -67,6 +79,8 @@ export function MapboxMap({ plan }: Props) {
         .addTo(map);
     }
 
+    // Tear down on unmount or whenever the plan changes — Mapbox doesn't
+    // free its WebGL context automatically.
     return () => {
       map.remove();
       mapRef.current = null;

@@ -1,3 +1,11 @@
+/**
+ * POST /api/itinerary
+ *
+ * Calls Google Gemini with a tightly constrained prompt and returns a
+ * validated, day-by-day itinerary JSON object that the planner UI can
+ * render directly. Sign-in required. Tries multiple model IDs in order
+ * so the route keeps working if the preferred model is rotated out.
+ */
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
@@ -7,8 +15,10 @@ import {
 } from "@/lib/itinerary/schema";
 import { buildPreferencesDescription } from "@/lib/itinerary/preferences";
 
+// Allow up to 2 minutes — Gemini occasionally takes a while for longer trips.
 export const maxDuration = 120;
 
+// Accept any of the three documented env var names for the Gemini key.
 function getGeminiApiKey(): string {
   const direct =
     process.env.GEMINI_API_KEY?.trim() ||
@@ -17,6 +27,7 @@ function getGeminiApiKey(): string {
   return direct ?? "";
 }
 
+// Shape of the request body sent by the PlanWorkspace client.
 type Body = {
   country: string;
   city: string;
@@ -126,12 +137,14 @@ CONSTRAINTS:
 - Each activity's "order" starts at 1 and is sequential within the day.`;
 }
 
+// Default fallback order. The GEMINI_MODEL env var can override the head.
 const DEFAULT_MODEL_CHAIN = [
   "gemini-2.5-flash-lite",
   "gemini-2.5-flash",
   "gemini-2.0-flash",
 ] as const;
 
+// Produce the ordered model list to try, prepending the user-preferred one.
 function uniqueModels(preferred: string | undefined): string[] {
   const seen = new Set<string>();
   const list: string[] = [];
@@ -148,10 +161,15 @@ function uniqueModels(preferred: string | undefined): string[] {
   return list;
 }
 
+// "Model not found" errors mean we should try the next ID, not give up.
 function isNotFoundModelError(msg: string): boolean {
   return /404|not found|not supported for generateContent/i.test(msg);
 }
 
+/**
+ * Try each model ID in order. On model-not-found errors we keep walking
+ * the chain; on quota or other hard failures we bail out immediately.
+ */
 async function generateWithModelChain(
   genAI: GoogleGenerativeAI,
   prompt: string,
@@ -163,6 +181,8 @@ async function generateWithModelChain(
       const model = genAI.getGenerativeModel({
         model: modelId,
         generationConfig: {
+          // Force JSON output and a creativity level that still respects
+          // the structured constraints in the prompt.
           responseMimeType: "application/json",
           temperature: 0.78,
         },
@@ -177,6 +197,7 @@ async function generateWithModelChain(
         /429|Too Many Requests|quota|RESOURCE_EXHAUSTED|free_tier|limit:\s*0/i.test(
           msg,
         );
+      // Quota errors are the same across every model — don't waste retries.
       if (isQuota) throw e;
       if (isNotFoundModelError(msg)) continue;
       throw e;
@@ -188,6 +209,7 @@ async function generateWithModelChain(
 }
 
 export async function POST(request: Request) {
+  // Auth gate — anonymous callers get a 401, no Gemini call.
   const supabase = await createClient();
   const {
     data: { user },
@@ -202,6 +224,7 @@ export async function POST(request: Request) {
     );
   }
 
+  // Server-side configuration check (key not committed, only in .env.local).
   const apiKey = getGeminiApiKey();
   if (!apiKey) {
     return NextResponse.json(
@@ -214,6 +237,7 @@ export async function POST(request: Request) {
     );
   }
 
+  // Parse the JSON body — malformed input is a 400, never crashes the route.
   let body: Body;
   try {
     body = (await request.json()) as Body;
@@ -296,6 +320,7 @@ export async function POST(request: Request) {
     );
   }
 
+  // Strip markdown fences just in case the model wrapped the JSON.
   let cleaned = text.trim();
   if (cleaned.startsWith("```")) {
     cleaned = cleaned
@@ -303,6 +328,7 @@ export async function POST(request: Request) {
       .replace(/\s*```$/i, "");
   }
 
+  // Parse → Zod-validate. Anything weird is reported as a friendly error.
   let parsed: unknown;
   try {
     parsed = JSON.parse(cleaned);
@@ -329,6 +355,8 @@ export async function POST(request: Request) {
     );
   }
 
+  // Return the validated plan plus a tiny meta block that includes which
+  // model actually answered (useful for debugging in DevTools).
   const plan: ParsedItineraryPlan = checked.data;
   return NextResponse.json({ plan, meta: { model: modelUsed } });
 }

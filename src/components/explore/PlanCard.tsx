@@ -1,4 +1,10 @@
-﻿import Link from "next/link";
+﻿/**
+ * Card tile used by /explore (and the "Recent public plans" section on
+ * the home page) to advertise a single saved itinerary. The image is
+ * fetched dynamically by CityImage; everything else comes from the
+ * Supabase row.
+ */
+import Link from "next/link";
 import { CityImage } from "@/components/CityImage";
 import type { ExplorePlanCard as ExplorePlanCardType } from "@/lib/mock-data";
 import { Calendar, MapPinned, User } from "lucide-react";

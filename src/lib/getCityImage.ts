@@ -211,18 +211,24 @@ export async function getCityImage(
   cityName: string,
   countryName: string,
 ): Promise<string> {
+  // Coerce empty/null inputs to a sensible default so the fallback search
+  // still returns a travel-y photo.
   const city = cityName?.trim() || "travel";
   const country = countryName?.trim() || "destination";
   const key = cacheKey(city, country);
 
+  // 1) Fast path: previous successful lookup in this browser session.
   const cached = readCache(key);
   if (cached) return cached;
 
+  // 2) Concurrent first mounts on the same key share one HTTP request.
   const existing = inflight.get(key);
   if (existing) return existing;
 
   const query = buildQuery(city, country);
 
+  // 3) Issue the fetch and persist the result (success OR fallback) so
+  //    later mounts skip the network entirely.
   const promise = fetchFromUnsplash(query)
     .then((url) => {
       writeCache(key, url);

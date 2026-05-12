@@ -1,3 +1,7 @@
+/**
+ * Shape of the planner workspace UI state that can be serialised and
+ * stored as a draft (per-user) in the `planner_drafts` Supabase table.
+ */
 import type { ItineraryPlan } from "@/types/itinerary";
 
 /** Serialisable planner UI state, used to persist drafts in Supabase. */

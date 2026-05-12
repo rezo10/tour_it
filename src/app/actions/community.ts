@@ -1,8 +1,15 @@
+/**
+ * Server actions for the Community module: creating posts and comments,
+ * toggling likes and follows, deleting posts/comments (with admin
+ * moderation via RLS). Each action validates auth + input, then defers
+ * permission checks to the database's RLS policies.
+ */
 "use server";
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 
+// Closed list of post categories; anything else is normalised to "General".
 const VALID_CATEGORIES = [
   "General",
   "Adventure",
@@ -21,6 +28,7 @@ export type CreatePostInput = {
   imageUrl?: string;
 };
 
+// Minimal URL sanitiser — only http/https schemes are accepted as images.
 function isHttpUrl(value: string): boolean {
   try {
     const u = new URL(value);
@@ -30,6 +38,7 @@ function isHttpUrl(value: string): boolean {
   }
 }
 
+/** Create a new community post under the calling user. */
 export async function createPost(input: CreatePostInput) {
   const supabase = await createClient();
   const {
@@ -37,6 +46,7 @@ export async function createPost(input: CreatePostInput) {
   } = await supabase.auth.getUser();
   if (!user) return { error: "You need to sign in to share a post." as const };
 
+  // Trim + validate the basic fields before inserting.
   const title = input.title.trim();
   const content = input.content.trim();
   if (!content) return { error: "Your post can't be empty." as const };
@@ -44,6 +54,7 @@ export async function createPost(input: CreatePostInput) {
     return { error: "Title is too long (max 120 characters)." as const };
   }
 
+  // Normalise the category against the closed list above.
   let category: string | null = null;
   if (input.category && input.category.trim().length > 0) {
     const match = VALID_CATEGORIES.find(
@@ -52,6 +63,7 @@ export async function createPost(input: CreatePostInput) {
     category = match ?? "General";
   }
 
+  // Optional image URL — kept only when it's a real http(s) link.
   let imageUrl: string | null = null;
   if (input.imageUrl && input.imageUrl.trim().length > 0) {
     if (!isHttpUrl(input.imageUrl.trim())) {
@@ -74,6 +86,10 @@ export async function createPost(input: CreatePostInput) {
   return { success: true as const };
 }
 
+/**
+ * Toggle the calling user's like on a post. If a row already exists we
+ * remove it (unlike); otherwise we insert it (like).
+ */
 export async function toggleLike(postId: string) {
   const supabase = await createClient();
   const {
@@ -81,6 +97,7 @@ export async function toggleLike(postId: string) {
   } = await supabase.auth.getUser();
   if (!user) return { error: "You need to sign in to like posts." as const };
 
+  // Look up the existing like row, if any.
   const { data: existing } = await supabase
     .from("post_likes")
     .select("post_id")
@@ -100,10 +117,16 @@ export async function toggleLike(postId: string) {
       .insert({ post_id: postId, user_id: user.id });
   }
 
+  // Refresh the cached community feed so the new count shows up.
   revalidatePath("/community");
   return { success: true as const };
 }
 
+/**
+ * Add a comment (or reply) to a post. `parentCommentId` is set when the
+ * UI is replying to an existing comment — this is what turns the flat
+ * comments table into a nested thread on read.
+ */
 export async function createComment(
   postId: string,
   content: string,
@@ -179,6 +202,10 @@ export async function deletePost(postId: string) {
   return { success: true as const };
 }
 
+/**
+ * Toggle follow/unfollow for another user. Self-follow is rejected
+ * client-side here and also via a CHECK constraint on the follows table.
+ */
 export async function toggleFollow(targetUserId: string) {
   const supabase = await createClient();
   const {
@@ -189,6 +216,7 @@ export async function toggleFollow(targetUserId: string) {
     return { error: "You can't follow yourself." as const };
   }
 
+  // Is there an existing follow row for this (follower, target) pair?
   const { data: existing } = await supabase
     .from("follows")
     .select("follower_id")
@@ -208,6 +236,7 @@ export async function toggleFollow(targetUserId: string) {
       .insert({ follower_id: user.id, following_id: targetUserId });
   }
 
+  // Both pages display follower counts; revalidate them now.
   revalidatePath("/community");
   revalidatePath(`/profile/${targetUserId}`);
   return { success: true as const };

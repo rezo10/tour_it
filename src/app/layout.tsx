@@ -1,8 +1,14 @@
+/**
+ * Root layout shared by every page. Sets up global metadata, the Poppins
+ * web font, and wraps the page content in MainShell (which renders the
+ * header, footer and Supabase config notice).
+ */
 import type { Metadata } from "next";
 import { Poppins } from "next/font/google";
 import { MainShell } from "@/components/layout/MainShell";
 import "./globals.css";
 
+// Self-hosted Google font; `swap` shows a fallback until the file loads.
 const poppins = Poppins({
   subsets: ["latin", "latin-ext"],
   weight: ["400", "500", "600", "700"],

@@ -1,3 +1,8 @@
+/**
+ * Follow / Unfollow toggle rendered at the top of /profile/[id]. Calls
+ * the toggleFollow server action and optimistically updates the local
+ * "following" state; on error it surfaces the message inline.
+ */
 "use client";
 
 import { useRouter } from "next/navigation";
@@ -12,6 +17,7 @@ type Props = {
 
 export function FollowButton({ targetUserId, initiallyFollowing }: Props) {
   const router = useRouter();
+  // Mirror the server state locally so the button label flips instantly.
   const [following, setFollowing] = useState(initiallyFollowing);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
@@ -25,6 +31,7 @@ export function FollowButton({ targetUserId, initiallyFollowing }: Props) {
         return;
       }
       setFollowing((f) => !f);
+      // refresh() re-runs the server component so follower counts update.
       router.refresh();
     });
   }

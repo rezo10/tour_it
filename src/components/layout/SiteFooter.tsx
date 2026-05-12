@@ -1,3 +1,7 @@
+/**
+ * Site-wide footer with the brand, secondary nav links, and a copyright
+ * line. Rendered once via MainShell at the bottom of every page.
+ */
 import Image from "next/image";
 import Link from "next/link";
 

@@ -1,3 +1,9 @@
+/**
+ * /community route. Loads recent posts (with their nested comments + like
+ * counts) and the calling user's admin flag, then hands everything off
+ * to <PostCardInteractive> for rendering. The actual mutations (like /
+ * comment / delete / follow) are server actions.
+ */
 import Link from "next/link";
 import { PostCardInteractive } from "@/components/community/PostCardInteractive";
 import { PostComposer } from "@/components/community/PostComposer";
@@ -6,6 +12,7 @@ import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { PenLine } from "lucide-react";
 
+// Small "X minutes ago / Y hours ago" formatter for post + comment headers.
 function formatTime(iso: string) {
   const d = new Date(iso);
   const diff = Math.max(0, Date.now() - d.getTime());
@@ -40,11 +47,16 @@ type CommentRow = {
   profiles: { display_name: string | null; role: string | null } | null;
 };
 
+/**
+ * Group flat comment rows into a nested tree keyed by post id. Each
+ * root-level comment carries its replies in `children`, recursively.
+ */
 function buildCommentTree(
   rows: CommentRow[],
   currentUserId: string | null,
 ): Map<string, CommentNode[]> {
   const byId = new Map<string, CommentNode>();
+  // Pass 1: materialise every row as a CommentNode in an id-indexed map.
   for (const c of rows) {
     byId.set(c.id, {
       id: c.id,
@@ -58,6 +70,8 @@ function buildCommentTree(
       children: [],
     });
   }
+  // Pass 2: wire children to parents; orphans (or top-level comments)
+  // become roots indexed by post id for fast lookup later.
   const roots = new Map<string, CommentNode[]>();
   for (const c of rows) {
     const node = byId.get(c.id);
@@ -100,6 +114,8 @@ export default async function CommunityPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
+  // Look up the viewer's role so we can decide whether to show admin
+  // moderation affordances (delete-any-post / delete-any-comment).
   let viewerIsAdmin = false;
   if (user) {
     const { data: viewerProfile } = await supabase
@@ -140,6 +156,8 @@ export default async function CommunityPage() {
   const commentRoots = new Map<string, CommentNode[]>();
 
   if (postIds.length > 0) {
+    // Pull every like row for visible posts in one query, then count
+    // client-side and flag which ones the viewer has liked.
     const { data: likesRows } = await supabase
       .from("post_likes")
       .select("post_id, user_id")

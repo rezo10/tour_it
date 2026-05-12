@@ -1,3 +1,9 @@
+/**
+ * Top navigation bar shown on every page. Renders the brand, the desktop
+ * nav links, and either a profile / sign-out cluster (when signed in) or
+ * the sign-in / join CTA pair. On small screens the nav collapses into a
+ * disclosure menu.
+ */
 import Image from "next/image";
 import Link from "next/link";
 import { Menu } from "lucide-react";
@@ -5,6 +11,7 @@ import { Avatar } from "@/components/profile/Avatar";
 import { AdminBadge } from "@/components/common/AdminBadge";
 import { SignOutButton } from "@/components/layout/SignOutButton";
 
+// Primary nav items. The order here is the order they appear in the header.
 const nav = [
   { href: "/", label: "Home" },
   { href: "/plan", label: "Plan" },
@@ -23,6 +30,7 @@ type HeaderUser = {
 } | null;
 
 export function SiteHeader({ user }: { user: HeaderUser }) {
+  // Prefer the chosen display name; fall back to the email local-part.
   const shownName = user?.nick ?? (user?.email ? user.email.split("@")[0] : "");
   return (
     <header className="sticky top-0 z-50 border-b border-navy-900/10 bg-cream-50/90 shadow-sm shadow-navy-900/5 backdrop-blur-md">

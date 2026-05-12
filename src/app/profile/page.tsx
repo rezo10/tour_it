@@ -1,4 +1,9 @@
-﻿import Link from "next/link";
+﻿/**
+ * /profile route — the signed-in user's own profile page. Shows the
+ * editable form, plus their saved plans, recent posts and follower
+ * counts. Anonymous visitors get a "sign in" prompt instead.
+ */
+import Link from "next/link";
 import { ProfileForm } from "@/components/profile/ProfileForm";
 import { Avatar } from "@/components/profile/Avatar";
 import { AdminBadge } from "@/components/common/AdminBadge";
@@ -53,6 +58,8 @@ export default async function ProfilePage() {
     );
   }
 
+  // Fire all five reads in parallel so the page renders as fast as
+  // possible — they don't depend on each other.
   const [{ data: profile }, { data: rawPlans }, { data: rawPosts }, followers, following] =
     await Promise.all([
       supabase

@@ -1,3 +1,9 @@
+/**
+ * MainShell sits inside the root layout and wraps every page with the
+ * site-wide chrome — config notice, header, and footer. It also handles
+ * the single profile read needed to render the header (user name, avatar
+ * and admin badge).
+ */
 import { ConfigNotice } from "@/components/layout/ConfigNotice";
 import { SiteFooter } from "@/components/layout/SiteFooter";
 import { SiteHeader } from "@/components/layout/SiteHeader";
@@ -7,6 +13,7 @@ import { createClient } from "@/lib/supabase/server";
 export async function MainShell({ children }: { children: React.ReactNode }) {
   const configured = isSupabaseConfigured();
 
+  // Header user payload — null when not signed in or Supabase isn't configured.
   let user: {
     id: string;
     email: string;
@@ -20,6 +27,7 @@ export async function MainShell({ children }: { children: React.ReactNode }) {
       data: { user: u },
     } = await supabase.auth.getUser();
     if (u) {
+      // One small select gives us everything the header needs in one round-trip.
       const { data: prof } = await supabase
         .from("profiles")
         .select("display_name, avatar_url, role")

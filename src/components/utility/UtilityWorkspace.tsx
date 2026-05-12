@@ -1,3 +1,13 @@
+/**
+ * "Utility" workspace mounted at /utility. Bundles three small widgets:
+ *
+ *   1. Current weather for a chosen city (via /api/utility/weather)
+ *   2. A wall clock derived from the city's UTC offset
+ *   3. Live FX rates between two currencies (via /api/utility/fx)
+ *
+ * Cities are picked from the curated `popularCities` table, with an
+ * "Other city…" escape hatch that forwards the raw query to OpenWeather.
+ */
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
@@ -21,10 +31,12 @@ import {
   Search,
 } from "lucide-react";
 
+// Seed values so the page always paints something useful on first load.
 const DEFAULT: PopularCity =
   popularCities.find((p) => p.city === "Istanbul" && p.cc === "TR") ??
   popularCities[0]!;
 
+// Closed list of currencies offered in the FX widget.
 const FX_CURRENCIES = [
   "USD",
   "EUR",
@@ -36,6 +48,7 @@ const FX_CURRENCIES = [
   "CAD",
 ] as const;
 
+// Choose decimal precision based on the size of the rate.
 function formatRate(rate: number): string {
   if (!Number.isFinite(rate)) return "—";
   if (rate >= 100) return rate.toFixed(2);
@@ -89,11 +102,13 @@ export function UtilityWorkspace() {
     timezone: number;
   } | null>(null);
 
+  // Tick once a second so the wall clock keeps advancing.
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(t);
   }, []);
 
+  // (Re-)fetch weather whenever the chosen city or manual query changes.
   useEffect(() => {
     let cancelled = false;
     async function loadWeather() {
@@ -152,9 +167,11 @@ export function UtilityWorkspace() {
     };
   }, [selected, activeManual]);
 
+  // (Re-)fetch the FX rate whenever the from/to currency pair changes.
   useEffect(() => {
     let cancelled = false;
     async function loadFx() {
+      // Same-currency pair = trivially 1:1, no need to hit the server.
       if (fxFrom === fxTo) {
         setFx({
           rate: 1,

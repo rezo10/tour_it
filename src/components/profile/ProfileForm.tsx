@@ -1,4 +1,9 @@
-﻿"use client";
+﻿/**
+ * Editable form on /profile. Lets the signed-in user change their
+ * display name, photo URL and bio. Submission is routed through the
+ * updateProfile server action, which handles validation + persistence.
+ */
+"use client";
 
 import { useState } from "react";
 import { updateProfile } from "@/app/actions/profile";

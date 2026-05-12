@@ -1,8 +1,15 @@
+/**
+ * Server actions for persisting a generated itinerary. A plan is split
+ * across three tables — `plans` (the trip header + the chosen
+ * preferences), `plan_days` (one row per day), and `plan_items` (the
+ * activities within each day). All writes are scoped to the calling user.
+ */
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
 import type { ItineraryPlan } from "@/types/itinerary";
 
+/** Snapshot of the four planner sliders stored next to each saved plan. */
 export type PlanPreferences = {
   walking: number;
   nightlife: number;
@@ -25,6 +32,7 @@ export async function savePlanToDatabase(
     };
   }
 
+  // 1) Insert the trip header row and capture the new id for the children.
   const { data: planRow, error: pe } = await supabase
     .from("plans")
     .insert({
@@ -33,6 +41,8 @@ export async function savePlanToDatabase(
       country: plan.country,
       city: plan.city,
       trip_type: plan.tripType,
+      // Store the four slider/preference values alongside the trip so the
+      // profile + explore pages can show them without re-querying.
       preferences: {
         ...preferences,
         day_count: plan.days.length,
@@ -53,6 +63,7 @@ export async function savePlanToDatabase(
 
   const planId = planRow.id as string;
 
+  // 2) For each day → insert the day row, then bulk-insert its activities.
   for (const day of plan.days) {
     const { data: dayRow, error: de } = await supabase
       .from("plan_days")
@@ -72,6 +83,7 @@ export async function savePlanToDatabase(
 
     const dayId = dayRow.id as string;
 
+    // Flatten the day's activities into plan_items rows.
     const items = day.activities.map((a) => ({
       plan_day_id: dayId,
       order_index: a.order,
@@ -95,6 +107,10 @@ export async function savePlanToDatabase(
   return { success: true as const, planId };
 }
 
+/**
+ * Flip a saved plan between public (visible in /explore) and private
+ * (only visible to its owner). RLS ensures non-owners can't call this.
+ */
 export async function togglePlanVisibility(planId: string, isPublic: boolean) {
   const supabase = await createClient();
   const {

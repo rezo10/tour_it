@@ -1,10 +1,17 @@
-﻿"use client";
+﻿/**
+ * "Share with the community" composer at the top of /community. A small
+ * form with title, body, category, and an optional image URL. Calls the
+ * createPost server action, then refreshes the route so the new post
+ * appears in the feed below.
+ */
+"use client";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createPost } from "@/app/actions/community";
 import { Image as ImageIcon, PenLine } from "lucide-react";
 
+// Keep in sync with the closed list inside the server action.
 const CATEGORIES = [
   "General",
   "Adventure",

@@ -1,3 +1,8 @@
+/**
+ * Reusable round profile picture. Displays the user's avatar when a URL
+ * is provided and the image loads successfully; otherwise falls back to
+ * a generic UserCircle icon over a soft gradient.
+ */
 "use client";
 
 import Image from "next/image";
@@ -6,6 +11,7 @@ import { UserCircle } from "lucide-react";
 
 type Size = "sm" | "md" | "lg";
 
+// Pixel + Tailwind size pairs for each preset.
 const SIZES: Record<Size, { px: number; cls: string }> = {
   sm: { px: 36, cls: "h-9 w-9" },
   md: { px: 56, cls: "h-14 w-14" },

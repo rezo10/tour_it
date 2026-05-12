@@ -1,4 +1,9 @@
-﻿"use client";
+﻿/**
+ * Combined sign-in / sign-up form. A single mode toggle switches between
+ * the two flows, both backed by the browser Supabase client. On success
+ * the user is redirected to the original `?next=` destination.
+ */
+"use client";
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -11,7 +16,9 @@ type Mode = "signin" | "signup";
 export function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  // Where to land after a successful sign-in (set by the originating page).
   const next = searchParams.get("next") ?? "/plan";
+  // `?error=auth` is set by the OAuth callback route on failure.
   const authError = searchParams.get("error");
 
   const [mode, setMode] = useState<Mode>("signin");
@@ -41,6 +48,7 @@ export function LoginForm() {
 
     try {
       if (mode === "signup") {
+        // Client-side username validation (mirrors the trigger in 003_*.sql).
         const nick = nickname.trim();
         if (nick.length < 2 || nick.length > 32) {
           setMessage("Username must be between 2 and 32 characters.");
@@ -52,6 +60,8 @@ export function LoginForm() {
           );
           return;
         }
+        // Stash the chosen username in user_metadata so the new-profile
+        // trigger picks it up as the initial display_name.
         const { data, error } = await supabase.auth.signUp({
           email,
           password,

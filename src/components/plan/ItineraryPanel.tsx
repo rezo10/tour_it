@@ -1,4 +1,9 @@
-﻿import { CityImage } from "@/components/CityImage";
+﻿/**
+ * Read-only renderer for a generated itinerary. Shows a city banner,
+ * the trip metadata, then iterates the days and their activities in
+ * order. Pairs with <MapboxMap> inside the planner workspace.
+ */
+import { CityImage } from "@/components/CityImage";
 import type { ItineraryPlan } from "@/types/itinerary";
 import { CalendarDays, Clock, MapPin } from "lucide-react";
 

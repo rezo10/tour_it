@@ -1,4 +1,10 @@
-﻿import Link from "next/link";
+﻿/**
+ * Home page (route: /). A server component that renders the hero,
+ * seasonal "in season now / coming up" rails, three featured city
+ * tiles, a product-updates strip, and the three most recent public
+ * plans loaded directly from Supabase.
+ */
+import Link from "next/link";
 import { HeroDiscoveryRail } from "@/components/home/HeroDiscoveryRail";
 import { CityImage } from "@/components/CityImage";
 import { getSeasonalRails } from "@/lib/places/seasonalPicks";
@@ -13,6 +19,7 @@ import {
   Sparkles,
 } from "lucide-react";
 
+// Three hand-picked entry cities shown in the "Featured destinations" strip.
 const featured = [
   {
     name: "Lisbon",
@@ -50,8 +57,14 @@ const coverGradients = [
   "from-coral-100 via-cream-100 to-navy-50",
 ];
 
+// Force runtime rendering so the "Recent public plans" list is always fresh.
 export const dynamic = "force-dynamic";
 
+/**
+ * Fetch the three most recently updated public plans for the bottom
+ * strip. Returns an empty array on any failure so the page always
+ * renders something.
+ */
 async function loadRecentPublicPlans(): Promise<ExplorePlanCard[]> {
   if (!isSupabaseConfigured()) return [];
   try {
@@ -103,6 +116,7 @@ async function loadRecentPublicPlans(): Promise<ExplorePlanCard[]> {
 }
 
 export default async function HomePage() {
+  // Pick the rotating seasonal recommendations for the current month.
   const seasonal = getSeasonalRails(new Date());
   const recentPlans = await loadRecentPublicPlans();
 
