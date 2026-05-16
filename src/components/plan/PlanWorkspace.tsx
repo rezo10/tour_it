@@ -7,9 +7,11 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
 import { ItineraryPanel } from "@/components/plan/ItineraryPanel";
 import {
+  loadPlanFromDatabase,
   savePlanToDatabase,
   type PlanPreferences,
 } from "@/app/actions/plan";
@@ -17,14 +19,16 @@ import {
   friendlyNetworkError,
   friendlyPlanGenerateError,
 } from "@/lib/itinerary/apiErrors";
+import {
+  snapPreferenceSlider,
+  PREFERENCE_SLIDER_STEPS,
+} from "@/lib/itinerary/sliderSteps";
 import type { ItineraryPlan } from "@/types/itinerary";
 import { CityImage } from "@/components/CityImage";
 import { popularCities, type PopularCity } from "@/data/popularCities";
 import { summarizePreferences } from "@/lib/itinerary/preferences";
-import { Loader2, Save, Sparkles } from "lucide-react";
+import { Loader2, Sparkles } from "lucide-react";
 
-// MapboxMap is loaded client-side only — it requires a real browser
-// environment to initialise its WebGL context.
 const MapboxMap = dynamic(
   () =>
     import("@/components/plan/MapboxMap").then((m) => ({
@@ -41,7 +45,6 @@ function MapLoading() {
   );
 }
 
-// Trip-style buttons offered above the planner form.
 const tripTypes = [
   "Cultural",
   "Relaxing",
@@ -50,12 +53,17 @@ const tripTypes = [
   "Urban",
 ] as const;
 
-// Seed value so the form is never empty on first paint.
 const DEFAULT_CITY: PopularCity =
   popularCities.find((p) => p.city === "Lisbon") ?? popularCities[0]!;
 
+function snapSlider(value: number) {
+  return snapPreferenceSlider(value);
+}
+
 export function PlanWorkspace() {
-  // Distinct sorted country list, derived once from the curated cities table.
+  const searchParams = useSearchParams();
+  const planIdFromUrl = searchParams.get("id");
+
   const countries = useMemo(
     () =>
       [...new Set(popularCities.map((p) => p.country))].sort((a, b) =>
@@ -74,7 +82,7 @@ export function PlanWorkspace() {
   const [tripType, setTripType] = useState<string>(tripTypes[0]);
   const [days, setDays] = useState<number>(3);
   const [walking, setWalking] = useState<number>(50);
-  const [nightlife, setNightlife] = useState<number>(30);
+  const [nightlife, setNightlife] = useState<number>(25);
   const [audience, setAudience] = useState<"any" | "family" | "solo">("any");
   const [environment, setEnvironment] = useState<
     "mixed" | "indoor" | "outdoor"
@@ -89,19 +97,86 @@ export function PlanWorkspace() {
   const [saveMsg, setSaveMsg] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [loadingPlan, setLoadingPlan] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
-  // When the country changes, re-anchor the city to the first city in
-  // that country (otherwise the old selection would be off the list).
   function handleCountry(c: string) {
     setCountry(c);
     const first = popularCities.find((p) => p.country === c);
     if (first) setCity(first.city);
   }
 
-  /**
-   * Call the /api/itinerary endpoint with the current form state.
-   * Maps server errors to friendly messages via apiErrors.ts.
-   */
+  useEffect(() => {
+    const savedPlanId = planIdFromUrl;
+    if (!savedPlanId) return;
+
+    let cancelled = false;
+
+    async function loadSavedPlan() {
+      setLoadError(null);
+      setLoadingPlan(true);
+      const result = await loadPlanFromDatabase(savedPlanId as string);
+      if (cancelled) return;
+
+      if ("error" in result) {
+        setLoadError(result.error);
+        setLoadingPlan(false);
+        return;
+      }
+
+      setCountry(result.plan.country);
+      setCity(result.plan.city);
+      setTripType(result.plan.tripType);
+      setDays(result.dayCount);
+      setWalking(snapSlider(result.preferences.walking));
+      setNightlife(snapSlider(result.preferences.nightlife));
+      setAudience(
+        result.preferences.audience === "family" ||
+          result.preferences.audience === "solo"
+          ? result.preferences.audience
+          : "any",
+      );
+      setEnvironment(
+        result.preferences.environment === "indoor" ||
+          result.preferences.environment === "outdoor"
+          ? result.preferences.environment
+          : "mixed",
+      );
+      setSavePublic(result.isPublic);
+      setItinerary(result.plan);
+      setShowResult(true);
+      setLoadingPlan(false);
+    }
+
+    void loadSavedPlan();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [planIdFromUrl]);
+
+  async function persistPlan(plan: ItineraryPlan) {
+    setSaveMsg(null);
+    setSaveError(null);
+    setSaving(true);
+    try {
+      const r = await savePlanToDatabase(plan, prefs, savePublic);
+      if ("error" in r && r.error) {
+        setSaveError(r.error);
+        return;
+      }
+      if ("success" in r && r.success) {
+        setSaveMsg(
+          savePublic
+            ? "Plan saved automatically — visible in Explore."
+            : "Plan saved automatically to your profile.",
+        );
+      }
+    } finally {
+      setSaving(false);
+    }
+  }
+
   async function handleGenerate() {
     setAiError(null);
     setSaveMsg(null);
@@ -148,6 +223,7 @@ export function PlanWorkspace() {
 
       setItinerary(data.plan);
       setShowResult(true);
+      await persistPlan(data.plan);
     } catch {
       setAiError(friendlyNetworkError());
       setShowResult(false);
@@ -164,39 +240,12 @@ export function PlanWorkspace() {
     environment,
   };
 
-  // Human-readable pills summarising the current slider/enum state.
   const preferenceTokens = useMemo(
     () => summarizePreferences({ walking, nightlife, audience, environment }),
     [walking, nightlife, audience, environment],
   );
 
-  /** Persist the generated itinerary + preferences to Supabase. */
-  async function handleSave() {
-    if (!itinerary) {
-      setSaveError("Generate an itinerary first, then you can save it.");
-      return;
-    }
-    setSaveMsg(null);
-    setSaveError(null);
-    setSaving(true);
-    try {
-      const r = await savePlanToDatabase(itinerary, prefs, savePublic);
-      if ("error" in r && r.error) {
-        setSaveError(r.error);
-        return;
-      }
-      if ("success" in r && r.success) {
-        setSaveMsg(
-          savePublic
-            ? "Plan saved — it is now visible in Explore."
-            : "Plan saved to your profile (private).",
-        );
-        setSavePublic(false);
-      }
-    } finally {
-      setSaving(false);
-    }
-  }
+  const busy = aiLoading || saving || loadingPlan;
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
@@ -209,12 +258,12 @@ export function PlanWorkspace() {
           day-by-day itinerary you can preview on the map and save to your
           profile.
         </p>
-        {aiError && (
+        {(aiError || loadError) && (
           <p
             className="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-900"
             role="alert"
           >
-            {aiError}
+            {aiError ?? loadError}
           </p>
         )}
       </header>
@@ -257,7 +306,7 @@ export function PlanWorkspace() {
                   className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 outline-none ring-coral-500/30 focus:border-coral-400 focus:ring-2"
                   value={country}
                   onChange={(e) => handleCountry(e.target.value)}
-                  disabled={aiLoading}
+                  disabled={busy}
                 >
                   {countries.map((c) => (
                     <option key={c} value={c}>
@@ -272,7 +321,7 @@ export function PlanWorkspace() {
                   className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 outline-none ring-coral-500/30 focus:border-coral-400 focus:ring-2"
                   value={city}
                   onChange={(e) => setCity(e.target.value)}
-                  disabled={aiLoading}
+                  disabled={busy}
                 >
                   {citiesHere.map((c) => (
                     <option key={`${c.city}-${c.cc}`} value={c.city}>
@@ -289,7 +338,7 @@ export function PlanWorkspace() {
                   className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 outline-none ring-coral-500/30 focus:border-coral-400 focus:ring-2"
                   value={tripType}
                   onChange={(e) => setTripType(e.target.value)}
-                  disabled={aiLoading}
+                  disabled={busy}
                 >
                   {tripTypes.map((t) => (
                     <option key={t} value={t}>
@@ -311,7 +360,7 @@ export function PlanWorkspace() {
                   onChange={(e) =>
                     setDays(Math.max(1, Math.min(14, Number(e.target.value))))
                   }
-                  disabled={aiLoading}
+                  disabled={busy}
                 />
               </label>
             </div>
@@ -330,10 +379,26 @@ export function PlanWorkspace() {
                 <input
                   type="range"
                   className="mt-2 w-full accent-coral-600"
+                  min={0}
+                  max={100}
+                  step={25}
+                  list="walking-steps"
                   value={walking}
-                  onChange={(e) => setWalking(Number(e.target.value))}
-                  disabled={aiLoading}
+                  onChange={(e) =>
+                    setWalking(snapSlider(Number(e.target.value)))
+                  }
+                  disabled={busy}
                 />
+                <datalist id="walking-steps">
+                  {PREFERENCE_SLIDER_STEPS.map((v) => (
+                    <option key={v} value={v} />
+                  ))}
+                </datalist>
+                <div className="mt-1 flex justify-between text-[10px] font-medium text-slate-400">
+                  {PREFERENCE_SLIDER_STEPS.map((v) => (
+                    <span key={v}>{v}</span>
+                  ))}
+                </div>
               </div>
               <div>
                 <div className="flex justify-between text-sm text-slate-700">
@@ -343,10 +408,26 @@ export function PlanWorkspace() {
                 <input
                   type="range"
                   className="mt-2 w-full accent-coral-600"
+                  min={0}
+                  max={100}
+                  step={25}
+                  list="nightlife-steps"
                   value={nightlife}
-                  onChange={(e) => setNightlife(Number(e.target.value))}
-                  disabled={aiLoading}
+                  onChange={(e) =>
+                    setNightlife(snapSlider(Number(e.target.value)))
+                  }
+                  disabled={busy}
                 />
+                <datalist id="nightlife-steps">
+                  {PREFERENCE_SLIDER_STEPS.map((v) => (
+                    <option key={v} value={v} />
+                  ))}
+                </datalist>
+                <div className="mt-1 flex justify-between text-[10px] font-medium text-slate-400">
+                  {PREFERENCE_SLIDER_STEPS.map((v) => (
+                    <span key={v}>{v}</span>
+                  ))}
+                </div>
               </div>
               <fieldset>
                 <legend className="text-sm font-medium text-slate-700">
@@ -364,12 +445,12 @@ export function PlanWorkspace() {
                       key={v}
                       type="button"
                       onClick={() => setAudience(v)}
-                      disabled={aiLoading}
+                      disabled={busy}
                       className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
                         audience === v
                           ? "bg-coral-600 text-white shadow-sm"
                           : "bg-slate-100 text-slate-700 hover:bg-slate-200"
-                      } ${aiLoading ? "pointer-events-none opacity-50" : ""}`}
+                      } ${busy ? "pointer-events-none opacity-50" : ""}`}
                     >
                       {label}
                     </button>
@@ -392,12 +473,12 @@ export function PlanWorkspace() {
                       key={v}
                       type="button"
                       onClick={() => setEnvironment(v)}
-                      disabled={aiLoading}
+                      disabled={busy}
                       className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
                         environment === v
                           ? "bg-accent-600 text-white shadow-sm"
                           : "bg-slate-100 text-slate-700 hover:bg-slate-200"
-                      } ${aiLoading ? "pointer-events-none opacity-50" : ""}`}
+                      } ${busy ? "pointer-events-none opacity-50" : ""}`}
                     >
                       {label}
                     </button>
@@ -408,10 +489,21 @@ export function PlanWorkspace() {
           </div>
 
           <div className="flex flex-col gap-3">
+            <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700">
+              <input
+                type="checkbox"
+                checked={savePublic}
+                onChange={(e) => setSavePublic(e.target.checked)}
+                className="rounded border-slate-300 accent-coral-600"
+                disabled={busy}
+              />
+              Share publicly in Explore
+            </label>
+
             <button
               type="button"
               onClick={() => void handleGenerate()}
-              disabled={aiLoading}
+              disabled={busy}
               className="flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-coral-500 to-coral-600 py-3.5 text-sm font-semibold text-white shadow-md transition hover:from-coral-600 hover:to-coral-700 disabled:opacity-60"
             >
               {aiLoading ? (
@@ -419,7 +511,11 @@ export function PlanWorkspace() {
               ) : (
                 <Sparkles className="h-4 w-4" aria-hidden />
               )}
-              {aiLoading ? "Generating itinerary…" : "Generate itinerary"}
+              {aiLoading
+                ? "Generating itinerary…"
+                : saving
+                  ? "Saving plan…"
+                  : "Generate itinerary"}
             </button>
 
             <p
@@ -429,29 +525,6 @@ export function PlanWorkspace() {
               {preferenceTokens.join("  ·  ")}
             </p>
 
-            <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700">
-              <input
-                type="checkbox"
-                checked={savePublic}
-                onChange={(e) => setSavePublic(e.target.checked)}
-                className="rounded border-slate-300 accent-coral-600"
-              />
-              Share publicly in Explore
-            </label>
-
-            <button
-              type="button"
-              onClick={() => void handleSave()}
-              disabled={saving || !itinerary}
-              className="flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white py-3.5 text-sm font-semibold text-slate-800 shadow-sm transition hover:bg-slate-50 disabled:opacity-60"
-            >
-              {saving ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Save className="h-4 w-4" aria-hidden />
-              )}
-              {saving ? "Saving…" : "Save plan"}
-            </button>
             {saveMsg && (
               <p
                 className="text-center text-xs font-medium text-emerald-700"
@@ -472,7 +545,15 @@ export function PlanWorkspace() {
         </aside>
 
         <section className="min-h-[560px]">
-          {!showResult || !itinerary ? (
+          {loadingPlan ? (
+            <div className="flex h-full min-h-[480px] flex-col items-center justify-center rounded-2xl border border-slate-200 bg-slate-50/80 p-8 text-center">
+              <Loader2
+                className="h-10 w-10 animate-spin text-coral-600"
+                aria-hidden
+              />
+              <p className="mt-4 text-sm text-slate-600">Loading your plan…</p>
+            </div>
+          ) : !showResult || !itinerary ? (
             <div className="flex h-full min-h-[480px] flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-slate-50/80 p-8 text-center">
               <Sparkles
                 className="h-10 w-10 text-coral-400"
@@ -483,7 +564,8 @@ export function PlanWorkspace() {
                 <span className="font-semibold text-slate-800">
                   Generate itinerary
                 </span>{" "}
-                — your day-by-day plan and the map view will open here.
+                — your day-by-day plan and the map view will open here. Plans
+                are saved automatically to your profile.
               </p>
             </div>
           ) : (

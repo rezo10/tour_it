@@ -90,13 +90,14 @@ export function MapboxMap({ plan }: Props) {
   if (!token) {
     return (
       <div className="flex h-full min-h-[320px] flex-col items-center justify-center rounded-2xl border border-amber-200 bg-amber-50 p-6 text-center text-sm text-amber-950">
-        <p className="font-medium">Mapbox token yok</p>
+        <p className="font-medium">Mapbox token missing</p>
         <p className="mt-2 text-xs text-amber-900/90">
-          `.env.local` içine{" "}
+          Add{" "}
           <code className="rounded bg-amber-200/60 px-1">
             NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN
           </code>{" "}
-          ekleyip dev sunucusunu yeniden başlat.
+          to <code className="rounded bg-amber-200/60 px-1">.env.local</code>{" "}
+          and restart the dev server.
         </p>
       </div>
     );

@@ -5,24 +5,19 @@
  */
 import Link from "next/link";
 import { PlanCard } from "@/components/explore/PlanCard";
-import type { ExplorePlanCard } from "@/lib/mock-data";
-import { createClient } from "@/lib/supabase/server";
+import { fetchPublicPlanCards } from "@/lib/plans/publicPlans";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 
-// Rotating gradient palette assigned to each card by index.
-const coverGradients = [
-  "from-accent-200 via-coral-100 to-cream-50",
-  "from-amber-100 via-orange-50 to-coral-100",
-  "from-coral-100 via-cream-100 to-navy-50",
-  "from-violet-100 via-fuchsia-50 to-cream-50",
-  "from-rose-100 via-orange-50 to-amber-50",
-];
-
-// Closed list of trip styles surfaced as filter chips.
-const TRIP_TYPES = ["All", "Relaxing", "Adventure", "Cultural"] as const;
+const TRIP_TYPES = [
+  "All",
+  "Relaxing",
+  "Adventure",
+  "Cultural",
+  "Nature",
+  "Urban",
+] as const;
 type TripFilter = (typeof TRIP_TYPES)[number];
 
-// Map an arbitrary query-string value into one of the allowed filters.
 function normalizeFilter(value: string | string[] | undefined): TripFilter {
   const raw = Array.isArray(value) ? value[0] : value;
   const match = TRIP_TYPES.find(
@@ -41,68 +36,18 @@ export default async function ExplorePage({
   const params = await searchParams;
   const tripFilter = normalizeFilter(params?.type);
 
-  let cards: ExplorePlanCard[] = [];
+  let cards: Awaited<ReturnType<typeof fetchPublicPlanCards>>["cards"] = [];
   let errorMessage: string | null = null;
 
   if (!isSupabaseConfigured()) {
     errorMessage =
       "The platform is not connected to its database yet. Please contact the maintainer.";
   } else {
-    const supabase = await createClient();
-    let query = supabase
-      .from("plans")
-      .select(
-        `
-        id,
-        title,
-        country,
-        city,
-        trip_type,
-        preferences,
-        updated_at,
-        profiles ( display_name )
-      `,
-      )
-      .eq("is_public", true)
-      .order("updated_at", { ascending: false })
-      .limit(60);
-
-    // Case-insensitive match so "Cultural"/"cultural" both work.
-    if (tripFilter !== "All") {
-      query = query.ilike("trip_type", tripFilter);
-    }
-
-    const { data: rows, error } = await query;
-
-    if (error) {
-      errorMessage =
-        "We couldn't load public plans right now. Please try again in a moment.";
-    } else if (rows?.length) {
-      cards = rows.map((p, i) => {
-        const prefs = (p.preferences ?? {}) as {
-          note?: string;
-          day_count?: number;
-        };
-        const profile = Array.isArray(p.profiles) ? p.profiles[0] : p.profiles;
-        const creator =
-          (profile as { display_name?: string | null } | null)?.display_name ??
-          "Traveller";
-        return {
-          id: String(p.id),
-          title: p.title,
-          country: p.country,
-          city: p.city,
-          tripType: p.trip_type,
-          days: typeof prefs.day_count === "number" ? prefs.day_count : 3,
-          description:
-            typeof prefs.note === "string" && prefs.note
-              ? prefs.note
-              : `${p.trip_type} · ${p.city}, ${p.country}`,
-          creator: creator || "Traveller",
-          coverGradient: coverGradients[i % coverGradients.length],
-        };
-      });
-    }
+    const result = await fetchPublicPlanCards({
+      tripFilter: tripFilter === "All" ? undefined : tripFilter,
+    });
+    cards = result.cards;
+    errorMessage = result.error;
   }
 
   return (
@@ -162,8 +107,9 @@ export default async function ExplorePage({
               : `No ${tripFilter.toLowerCase()} trips have been shared yet`}
           </p>
           <p className="mx-auto mt-2 max-w-md text-sm text-slate-600">
-            Open the planner, generate an itinerary and toggle “Share publicly”
-            when you save it — it will appear here for everyone.
+            Open the planner, generate an itinerary, and enable “Share publicly
+            in Explore” before you generate — your plan is saved automatically
+            and will appear here.
           </p>
           <Link
             href="/plan"

@@ -10,7 +10,7 @@ import { CityImage } from "@/components/CityImage";
 import { getSeasonalRails } from "@/lib/places/seasonalPicks";
 import { PlanCard } from "@/components/explore/PlanCard";
 import type { ExplorePlanCard } from "@/lib/mock-data";
-import { createClient } from "@/lib/supabase/server";
+import { fetchPublicPlanCards } from "@/lib/plans/publicPlans";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import {
   ArrowRight,
@@ -51,12 +51,6 @@ const news = [
   },
 ];
 
-const coverGradients = [
-  "from-accent-200 via-coral-100 to-cream-50",
-  "from-amber-100 via-orange-50 to-coral-100",
-  "from-coral-100 via-cream-100 to-navy-50",
-];
-
 // Force runtime rendering so the "Recent public plans" list is always fresh.
 export const dynamic = "force-dynamic";
 
@@ -68,48 +62,8 @@ export const dynamic = "force-dynamic";
 async function loadRecentPublicPlans(): Promise<ExplorePlanCard[]> {
   if (!isSupabaseConfigured()) return [];
   try {
-    const supabase = await createClient();
-    const { data: rows, error } = await supabase
-      .from("plans")
-      .select(
-        `
-        id,
-        title,
-        country,
-        city,
-        trip_type,
-        preferences,
-        updated_at,
-        profiles ( display_name )
-      `,
-      )
-      .eq("is_public", true)
-      .order("updated_at", { ascending: false })
-      .limit(3);
-
-    if (error || !rows) return [];
-
-    return rows.map((p, i) => {
-      const prefs = (p.preferences ?? {}) as { note?: string; day_count?: number };
-      const profile = Array.isArray(p.profiles) ? p.profiles[0] : p.profiles;
-      const creator =
-        (profile as { display_name?: string | null } | null)?.display_name ??
-        "Traveller";
-      return {
-        id: String(p.id),
-        title: p.title,
-        country: p.country,
-        city: p.city,
-        tripType: p.trip_type,
-        days: typeof prefs.day_count === "number" ? prefs.day_count : 3,
-        description:
-          typeof prefs.note === "string" && prefs.note
-            ? prefs.note
-            : `${p.trip_type} · ${p.city}, ${p.country}`,
-        creator: creator || "Traveller",
-        coverGradient: coverGradients[i % coverGradients.length],
-      };
-    });
+    const { cards } = await fetchPublicPlanCards({ limit: 3 });
+    return cards;
   } catch {
     return [];
   }

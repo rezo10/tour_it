@@ -107,6 +107,103 @@ export async function savePlanToDatabase(
   return { success: true as const, planId };
 }
 
+export type LoadedPlan = {
+  plan: ItineraryPlan;
+  preferences: PlanPreferences;
+  planId: string;
+  isPublic: boolean;
+  dayCount: number;
+};
+
+/** Reconstruct a saved itinerary for the planner view (owner or public). */
+export async function loadPlanFromDatabase(
+  planId: string,
+): Promise<{ error: string } | LoadedPlan> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const { data: header, error: headerError } = await supabase
+    .from("plans")
+    .select("id, title, country, city, trip_type, preferences, is_public, user_id")
+    .eq("id", planId)
+    .maybeSingle();
+
+  if (headerError || !header) {
+    return { error: "We couldn't find that plan." };
+  }
+
+  const isOwner = user?.id === header.user_id;
+  if (!header.is_public && !isOwner) {
+    return { error: "This plan is private." };
+  }
+
+  const { data: dayRows, error: daysError } = await supabase
+    .from("plan_days")
+    .select("id, day_number, title")
+    .eq("plan_id", planId)
+    .order("day_number", { ascending: true });
+
+  if (daysError || !dayRows?.length) {
+    return { error: "This plan has no saved days yet." };
+  }
+
+  const prefsRaw = (header.preferences ?? {}) as Record<string, unknown>;
+  const preferences: PlanPreferences = {
+    walking: Number(prefsRaw.walking ?? 50),
+    nightlife: Number(prefsRaw.nightlife ?? 30),
+    audience: String(prefsRaw.audience ?? "any"),
+    environment: String(prefsRaw.environment ?? "mixed"),
+  };
+
+  const days: ItineraryPlan["days"] = [];
+
+  for (const dayRow of dayRows) {
+    const { data: items, error: itemsError } = await supabase
+      .from("plan_items")
+      .select(
+        "order_index, name, description, duration, category, lat, lng",
+      )
+      .eq("plan_day_id", dayRow.id)
+      .order("order_index", { ascending: true });
+
+    if (itemsError) {
+      return { error: "We couldn't load one of the plan days." };
+    }
+
+    days.push({
+      day: dayRow.day_number,
+      title: dayRow.title,
+      activities: (items ?? []).map((a) => ({
+        order: a.order_index,
+        name: a.name,
+        description: a.description,
+        duration: a.duration,
+        category: a.category,
+        lat: a.lat,
+        lng: a.lng,
+      })),
+    });
+  }
+
+  const plan: ItineraryPlan = {
+    title: header.title,
+    country: header.country,
+    city: header.city,
+    tripType: header.trip_type,
+    days,
+  };
+
+  return {
+    plan,
+    preferences,
+    planId: String(header.id),
+    isPublic: Boolean(header.is_public),
+    dayCount: days.length,
+  };
+}
+
 /**
  * Flip a saved plan between public (visible in /explore) and private
  * (only visible to its owner). RLS ensures non-owners can't call this.

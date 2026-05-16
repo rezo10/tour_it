@@ -52,10 +52,10 @@ export function PlanCard({ plan }: Props) {
             {plan.creator}
           </span>
           <Link
-            href="/plan"
+            href={`/plan?id=${plan.id}`}
             className="text-sm font-semibold text-coral-700 transition group-hover:text-coral-900"
           >
-            Open planner →
+            View plan →
           </Link>
         </div>
       </div>
