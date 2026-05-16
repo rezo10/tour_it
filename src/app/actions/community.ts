@@ -83,6 +83,7 @@ export async function createPost(input: CreatePostInput) {
 
   if (error) return { error: error.message };
   revalidatePath("/community");
+  revalidatePath("/profile");
   return { success: true as const };
 }
 

@@ -8,6 +8,12 @@ import Link from "next/link";
 import { PostCardInteractive } from "@/components/community/PostCardInteractive";
 import { PostComposer } from "@/components/community/PostComposer";
 import type { CommentNode } from "@/components/community/CommentThread";
+import {
+  loadCommunityComments,
+  loadCommunityPosts,
+  type CommunityCommentRow,
+  type CommunityPostRow,
+} from "@/lib/community/feed";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { PenLine } from "lucide-react";
@@ -26,33 +32,12 @@ function formatTime(iso: string) {
   return d.toLocaleDateString();
 }
 
-type PostRow = {
-  id: string;
-  title: string | null;
-  content: string;
-  category: string | null;
-  image_url: string | null;
-  created_at: string;
-  user_id: string;
-  profiles: { display_name: string | null; role: string | null } | null;
-};
-
-type CommentRow = {
-  id: string;
-  post_id: string;
-  user_id: string;
-  parent_comment_id: string | null;
-  content: string;
-  created_at: string;
-  profiles: { display_name: string | null; role: string | null } | null;
-};
-
 /**
  * Group flat comment rows into a nested tree keyed by post id. Each
  * root-level comment carries its replies in `children`, recursively.
  */
 function buildCommentTree(
-  rows: CommentRow[],
+  rows: CommunityCommentRow[],
   currentUserId: string | null,
 ): Map<string, CommentNode[]> {
   const byId = new Map<string, CommentNode>();
@@ -126,29 +111,7 @@ export default async function CommunityPage() {
     viewerIsAdmin = viewerProfile?.role === "admin";
   }
 
-  const { data: postsData, error: postsError } = await supabase
-    .from("posts")
-    .select(
-      "id, title, content, category, image_url, created_at, user_id, profiles ( display_name, role )",
-    )
-    .order("created_at", { ascending: false })
-    .limit(40);
-
-  let posts: PostRow[] = [];
-  if (!postsError && postsData?.length) {
-    posts = postsData.map((r) => {
-      const raw = r as unknown as Omit<PostRow, "profiles"> & {
-        profiles:
-          | { display_name: string | null; role: string | null }
-          | { display_name: string | null; role: string | null }[]
-          | null;
-      };
-      const profiles = Array.isArray(raw.profiles)
-        ? raw.profiles[0] ?? null
-        : raw.profiles;
-      return { ...raw, profiles };
-    });
-  }
+  const { posts, error: feedError } = await loadCommunityPosts(supabase, 40);
 
   const postIds = posts.map((p) => p.id);
   const likeCount: Record<string, number> = {};
@@ -173,28 +136,9 @@ export default async function CommunityPage() {
       }
     }
 
-    const { data: commentRows } = await supabase
-      .from("comments")
-      .select(
-        "id, post_id, user_id, parent_comment_id, content, created_at, profiles ( display_name, role )",
-      )
-      .in("post_id", postIds)
-      .order("created_at", { ascending: true });
-
-    if (commentRows) {
-      const normalized: CommentRow[] = commentRows.map((c) => {
-        const raw = c as unknown as Omit<CommentRow, "profiles"> & {
-          profiles:
-            | { display_name: string | null; role: string | null }
-            | { display_name: string | null; role: string | null }[]
-            | null;
-        };
-        const profiles = Array.isArray(raw.profiles)
-          ? raw.profiles[0] ?? null
-          : raw.profiles;
-        return { ...raw, profiles };
-      });
-      const tree = buildCommentTree(normalized, user?.id ?? null);
+    const commentRows = await loadCommunityComments(supabase, postIds);
+    if (commentRows.length) {
+      const tree = buildCommentTree(commentRows, user?.id ?? null);
       for (const [k, v] of tree) commentRoots.set(k, v);
     }
   }
@@ -224,17 +168,17 @@ export default async function CommunityPage() {
 
       {user && <PostComposer />}
 
-      {postsError && (
+      {feedError && (
         <p
           className="mb-6 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900"
           role="alert"
         >
-          We couldn&apos;t load the community feed. Please refresh the page.
+          {feedError}
         </p>
       )}
 
       <div className="space-y-4">
-        {posts.length === 0 && !postsError ? (
+        {posts.length === 0 && !feedError ? (
           <div className="rounded-2xl border border-dashed border-slate-200 bg-white/70 p-10 text-center">
             <p className="text-sm font-semibold text-slate-900">
               No posts yet
@@ -245,7 +189,7 @@ export default async function CommunityPage() {
             </p>
           </div>
         ) : (
-          posts.map((post) => (
+          posts.map((post: CommunityPostRow) => (
             <PostCardInteractive
               key={post.id}
               id={post.id}
